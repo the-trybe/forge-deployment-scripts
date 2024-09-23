@@ -1,0 +1,6 @@
+server_name: "server-name"
+site_domain: "sub.domain.tld"
+github_repository: "user/repo"
+github_branch: "main"
+project_type: "php"
+php_version: php81

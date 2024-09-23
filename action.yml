@@ -1,0 +1,35 @@
+name: "Deploy to Laravel Forge"
+description: "Deploy your site using Laravel Forge API"
+author: "The Trybe"
+
+inputs:
+  forge_api_token:
+    description: "Laravel Forge API Token"
+    required: true
+  deploy_config:
+    description: "Base64-encoded content of forge-deploy.yml"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+    - uses: actions/checkout@v4
+      with:
+        repository: the-trybe/forge-deployment-scripts
+        ref: main
+    - name: Install Dependencies
+      run: pip install -r requirements.txt
+      shell: bash
+    - name: Decode and Save deploy_config
+      run: |
+        echo "${{ inputs.deploy_config }}" | base64 --decode > forge-deploy.yml  # Decoding the base64 content back to YAML
+      shell: bash
+    - name: Deploy to Laravel Forge
+      run: python3 deploy.py
+      shell: bash
+      env:
+        FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
