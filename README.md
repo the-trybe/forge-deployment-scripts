@@ -69,11 +69,13 @@ nginx_config_variables: # [Optional] variables to replace in the Nginx template
   PROXY_PASS_PORT: 3000
 ```
 
-## Examples
+**Examples:**
 
 You can find example `forge-deploy.yml` files in the `examples` folder of this repository. These examples provide configurations for different types of projects.
 
 - [Laravel Example](examples/laravel/forge-deploy.yml)
 - [Next.js Example](examples/nextjs/forge-deploy.yml)
 
-Feel free to customize these example files to fit your deployment needs.
+## Nginx Templates
+
+You can use custom Nginx templates by creating a new file in the `nginx_templates` folder.
