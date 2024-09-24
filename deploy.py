@@ -70,6 +70,7 @@ def deploy_site():
 
     # create site
     if not site:
+        # nginx template
         response = requests.get(
             f"{forge_uri}/servers/{server_id}/nginx/templates", headers=headers
         )
@@ -84,8 +85,19 @@ def deploy_site():
             None,
         )
 
+        # if template isn't added in the server add it from nginx-templates folder
         if not nginx_template_id:
-            raise Exception("Nginx template not found")
+            if os.path.exists(f"nginx_templates/{config["nginx_template"]}.conf"):
+                with open(f"nginx_templates/{config['nginx_template']}.conf", "r") as file:
+                    response = requests.post(
+                        f"{forge_uri}/servers/{server_id}/nginx/templates",
+                        headers=headers,
+                        json={"content": file.read(), "name": config["nginx_template"]},
+                    )
+                    response.raise_for_status()
+                    nginx_template_id = response.json()["template"]["id"]
+            else:
+                raise Exception("Invalid nginx template name")
 
         create_site_payload = {
             "domain": config["site_domain"],
