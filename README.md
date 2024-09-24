@@ -64,7 +64,9 @@ environment: # [Optional] Environment variables for the site
   DB_PASSWORD: "yourpassword"
 aliases: # [Optional] Additional domain aliases
   - "www.your-site-domain.com"
-nginx_template: "default" # [Optional] Nginx template to use (default: "default")
+nginx_template: "default" # [Optional] Nginx template to use (default: "default") -- see nginx_templates folder
+nginx_config_variables: # [Optional] variables to replace in the Nginx template
+  PROXY_PASS_PORT: 3000
 ```
 
 ## Examples

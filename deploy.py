@@ -1,4 +1,5 @@
 import logging
+import re
 import os
 import sys
 import time
@@ -36,6 +37,7 @@ def deploy_site():
             "environment": data.get("environment", {}),
             "aliases": data.get("aliases", []),
             "nginx_template": data.get("nginx_template", "default"),
+            "nginx_config_variables": data.get("nginx_config_variables", {}),
         }
 
     headers = {
@@ -88,7 +90,9 @@ def deploy_site():
         # if template isn't added in the server add it from nginx-templates folder
         if not nginx_template_id:
             if os.path.exists(f"nginx_templates/{config["nginx_template"]}.conf"):
-                with open(f"nginx_templates/{config['nginx_template']}.conf", "r") as file:
+                with open(
+                    f"nginx_templates/{config['nginx_template']}.conf", "r"
+                ) as file:
                     response = requests.post(
                         f"{forge_uri}/servers/{server_id}/nginx/templates",
                         headers=headers,
@@ -125,6 +129,28 @@ def deploy_site():
 
         new_site_created = True
         logger.info("Site created successfully")
+
+        # set nginx config variables
+        response = requests.get(
+            f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx", headers=headers
+        )
+        response.raise_for_status()
+        nginx_config = response.content.decode("utf-8")
+
+        pattern = re.compile(r"{{(.*?)}}")
+
+        def replace_match(match):
+            var_name = match.group(1).strip()
+            return str(config["nginx_config_variables"].get(var_name, f"{{{{{var_name}}}}}"))
+
+        nginx_config = pattern.sub(replace_match, nginx_config)
+        response = requests.put(
+            f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx",
+            headers=headers,
+            json={"content": nginx_config},
+        )
+        response.raise_for_status()
+        
 
     site_id = site["id"]
 
