@@ -66,7 +66,7 @@ def deploy_site():
     if not server_id:
         raise Exception("Server not found")
 
-    for site in config["sites"]:
+    for site_conf in config["sites"]:
         response = requests.get(
             f"{forge_uri}/servers/{server_id}/sites", headers=headers
         )
@@ -75,7 +75,7 @@ def deploy_site():
             (
                 site
                 for site in response.json()["sites"]
-                if site["name"] == site["site_domain"]
+                if site["name"] == site_conf["site_domain"]
             ),
             None,
         )
@@ -92,23 +92,25 @@ def deploy_site():
                 (
                     item["id"]
                     for item in nginx_templates
-                    if item["name"] == site["nginx_template"]
+                    if item["name"] == site_conf["nginx_template"]
                 ),
                 None,
             )
 
             # if template isn't added in the server add it from nginx-templates folder
             if not nginx_template_id:
-                if os.path.exists(f"nginx_templates/{site["nginx_template"]}.conf"):
+                if os.path.exists(
+                    f"nginx_templates/{site_conf["nginx_template"]}.conf"
+                ):
                     with open(
-                        f"nginx_templates/{site['nginx_template']}.conf", "r"
+                        f"nginx_templates/{site_conf['nginx_template']}.conf", "r"
                     ) as file:
                         response = requests.post(
                             f"{forge_uri}/servers/{server_id}/nginx/templates",
                             headers=headers,
                             json={
                                 "content": file.read(),
-                                "name": site["nginx_template"],
+                                "name": site_conf["nginx_template"],
                             },
                         )
                         response.raise_for_status()
@@ -117,9 +119,9 @@ def deploy_site():
                     raise Exception("Invalid nginx template name")
 
             create_site_payload = {
-                "domain": site["site_domain"],
-                "project_type": site["project_type"],
-                "aliases": site["aliases"],
+                "domain": site_conf["site_domain"],
+                "project_type": site_conf["project_type"],
+                "aliases": site_conf["aliases"],
                 "isolated": False,
                 "nginx_template": nginx_template_id,
             }
@@ -157,7 +159,9 @@ def deploy_site():
             def replace_match(match):
                 var_name = match.group(1).strip()
                 return str(
-                    site["nginx_site_variables"].get(var_name, f"{{{{{var_name}}}}}")
+                    site_conf["nginx_site_variables"].get(
+                        var_name, f"{{{{{var_name}}}}}"
+                    )
                 )
 
             nginx_site = pattern.sub(replace_match, nginx_site)
@@ -171,16 +175,17 @@ def deploy_site():
         site_id = site["id"]
 
         # add repository
-        if site["repository"] != site["github_repository"]:
+        # TODO: change repo logic: change only if none
+        if site["repository"] != site_conf["github_repository"]:
             logger.info("adding repository...")
             response = requests.post(
                 f"{forge_uri}/servers/{server_id}/sites/{site_id}/git",
                 headers=headers,
                 json={
                     "provider": "github",
-                    "repository": site["github_repository"],
-                    "branch": site["github_branch"],
-                    "composer": True if site["project_type"] == "php" else False,
+                    "repository": site_conf["github_repository"],
+                    "branch": site_conf["github_branch"],
+                    "composer": True if site_conf["project_type"] == "php" else False,
                 },
             )
             response.raise_for_status()
@@ -196,7 +201,7 @@ def deploy_site():
 
         # create daemon
         daemon_id = None
-        if site["run_command"]:
+        if site_conf["run_command"]:
             response = requests.get(
                 f"{forge_uri}/servers/{server_id}/daemons", headers=headers
             )
@@ -205,8 +210,8 @@ def deploy_site():
                 (
                     daemon["id"]
                     for daemon in response.json()["daemons"]
-                    if daemon["command"] == site["run_command"]
-                    and daemon["directory"] == f"/home/forge/{site["site_domain"]}"
+                    if daemon["command"] == site_conf["run_command"]
+                    and daemon["directory"] == f"/home/forge/{site_conf["site_domain"]}"
                 ),
                 None,
             )
@@ -215,9 +220,9 @@ def deploy_site():
                     f"{forge_uri}/servers/{server_id}/daemons",
                     headers=headers,
                     json={
-                        "command": site["run_command"],
+                        "command": site_conf["run_command"],
                         "user": "forge",
-                        "directory": f"/home/forge/{site["site_domain"]}",
+                        "directory": f"/home/forge/{site_conf["site_domain"]}",
                         "startsecs": 1,
                     },
                 )
@@ -226,12 +231,12 @@ def deploy_site():
 
         # deployment script
         # if build_commands not provided, the default deployment script generated by forge is kept
-        if len(site["build_commands"]) > 0:
+        if len(site_conf["build_commands"]) > 0:
             deployment_script = f"""#generated by deployment script don't modify
-    cd /home/forge/{site["site_domain"]}
+    cd /home/forge/{site_conf["site_domain"]}
     git pull origin $FORGE_SITE_BRANCH
     """
-            for cmd in site["build_commands"]:
+            for cmd in site_conf["build_commands"]:
                 deployment_script += f"{cmd}\n"
             if daemon_id:
                 deployment_script += (
@@ -243,14 +248,14 @@ def deploy_site():
                 headers=headers,
                 json={
                     "content": deployment_script,
-                    "auto_source": True if len(site["environment"]) > 0 else False,
+                    "auto_source": True if len(site_conf["environment"]) > 0 else False,
                 },  # to make .env available for the build
             )
             response.raise_for_status()
 
         # set env
         env = ""
-        for key, value in site["environment"].items():
+        for key, value in site_conf["environment"].items():
             env += f'{key}="{value}"\n'
         if len(env) > 0:
             response = requests.put(
@@ -263,11 +268,13 @@ def deploy_site():
             response.raise_for_status()
 
         # certificate
-        if new_site_created:
+        # TODO: check if cert is not already created
+        if site["certificate"]:
+
             response = requests.post(
                 f"{forge_uri}/servers/{server_id}/sites/{site_id}/certificates/letsencrypt",
                 headers=headers,
-                json={"domains": [site["site_domain"], *site["aliases"]]},
+                json={"domains": [site_conf["site_domain"], *site_conf["aliases"]]},
             )
             response.raise_for_status()
 
