@@ -41,7 +41,7 @@ def deploy_site():
                     "root_dir": root_dir,
                     "project_type": site.get("project_type", "html"),
                     "php_version": site.get("php_version", None),
-                    "build_commands": site.get("build_commands", []),
+                    "deployment_script": site.get("build_commands", []),
                     "run_command": site.get("run_command", None),
                     "environment": site.get("environment", {}),
                     "aliases": site.get("aliases", []),
