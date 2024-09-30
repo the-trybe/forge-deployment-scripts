@@ -20,8 +20,6 @@ def deploy_site():
     if forge_api_token is None:
         raise Exception("FORGE_API_TOKEN is not set")
 
-    new_site_created = False
-
     with open("forge-deploy.yml", "r") as file:
         data = yaml.safe_load(file)
         # TODO: validate data
@@ -143,7 +141,6 @@ def deploy_site():
                     headers=headers,
                 ).json()["site"]
 
-            new_site_created = True
             logger.info("Site created successfully")
 
             # set nginx site variables
@@ -152,23 +149,23 @@ def deploy_site():
                 headers=headers,
             )
             response.raise_for_status()
-            nginx_site = response.content.decode("utf-8")
+            nginx_config = response.content.decode("utf-8")
 
             pattern = re.compile(r"{{(.*?)}}")
 
             def replace_match(match):
                 var_name = match.group(1).strip()
                 return str(
-                    site_conf["nginx_site_variables"].get(
+                    site_conf["nginx_config_variables"].get(
                         var_name, f"{{{{{var_name}}}}}"
                     )
                 )
 
-            nginx_site = pattern.sub(replace_match, nginx_site)
+            nginx_config = pattern.sub(replace_match, nginx_config)
             response = requests.put(
                 f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx",
                 headers=headers,
-                json={"content": nginx_site},
+                json={"content": nginx_config},
             )
             response.raise_for_status()
 
@@ -176,15 +173,15 @@ def deploy_site():
 
         # add repository
         # TODO: change repo logic: change only if none
-        if site["repository"] != site_conf["github_repository"]:
+        if site["repository"] != config["github_repository"]:
             logger.info("adding repository...")
             response = requests.post(
                 f"{forge_uri}/servers/{server_id}/sites/{site_id}/git",
                 headers=headers,
                 json={
                     "provider": "github",
-                    "repository": site_conf["github_repository"],
-                    "branch": site_conf["github_branch"],
+                    "repository": config["github_repository"],
+                    "branch": config["github_branch"],
                     "composer": True if site_conf["project_type"] == "php" else False,
                 },
             )
@@ -268,15 +265,14 @@ def deploy_site():
             response.raise_for_status()
 
         # certificate
-        # TODO: check if cert is not already created
-        if site["certificate"]:
-
+        if site_conf["certificate"] and not site["is_secured"]:
             response = requests.post(
                 f"{forge_uri}/servers/{server_id}/sites/{site_id}/certificates/letsencrypt",
                 headers=headers,
                 json={"domains": [site_conf["site_domain"], *site_conf["aliases"]]},
             )
             response.raise_for_status()
+            logger.info("Certificate added successfully")
 
         # deploy site
         logger.info("Deploying site...")
