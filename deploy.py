@@ -70,7 +70,9 @@ def deploy_site():
     if not server_id:
         raise Exception("Server not found")
 
+    # sites
     for site_conf in config["sites"]:
+        logger.info(f"\n---- Site: {site_conf['site_domain']} ----\n")
         response = requests.get(
             f"{forge_uri}/servers/{server_id}/sites", headers=headers
         )
@@ -174,8 +176,54 @@ def deploy_site():
                 json={"content": nginx_config},
             )
             response.raise_for_status()
+        else:
+            logger.info("Site already exists")
 
         site_id = site["id"]
+
+        # ---- php version ----
+
+        res = requests.get(f"{forge_uri}/servers/{server_id}/sites/{site_id}", headers=headers)
+        res.raise_for_status()
+        site_php_version = res.json()["site"]["php_version"]
+
+        if site_conf["php_version"] and site_conf["php_version"] != site_php_version:
+            # check if version is installed, if no install it
+            res = requests.get(f"{forge_uri}/servers/{server_id}/php", headers=headers)
+            res.raise_for_status()
+            if site_conf["php_version"] not in [
+                php["version"] for php in res.json()
+            ]:
+                logger.info("installing php version...")
+                response = requests.post(
+                    f"{forge_uri}/servers/{server_id}/php",
+                    headers=headers,
+                    json={"version": site_conf["php_version"]},
+                )
+                response.raise_for_status()
+
+                #TODO: implement max retries for all waits
+                #wait for installation
+                while True:
+                    res = requests.get(f"{forge_uri}/servers/{server_id}/php", headers=headers)
+                    res.raise_for_status()
+                    installed_php = next(
+                        (php for php in res.json() if php["version"] == site_conf["php_version"]),
+                    )
+                    if installed_php["status"] == "installed":
+                        break
+                    time.sleep(2)
+                logger.info(f"Php version {site_conf['php_version']} installed")
+                
+
+            # update site php version
+            res = requests.put(
+                f"{forge_uri}/servers/{server_id}/sites/{site_id}/php",
+                headers=headers,
+                json={"version": site_conf["php_version"]},
+            )
+            res.raise_for_status()
+            logger.info(f"Php version set to {site_conf["php_version"]}")
 
         site_dir = str(
             Path("/home/forge/") / site_conf["site_domain"] / site_conf["root_dir"]
@@ -296,6 +344,7 @@ def deploy_site():
             )
             response.raise_for_status()
             logger.info("Certificate added successfully")
+            #TODO: check if cert is applied (check is_secured)
 
         # deploy site
         logger.info("Deploying site...")
@@ -328,5 +377,5 @@ if __name__ == "__main__":
         logger.error("HTTP error occurred: %s", http_err, exc_info=True)
         sys.exit(1)
     except Exception as err:
-        logger.error(f"An error occurred: %s", err, exc_info=True)
+        logger.error("An error occurred: %s", err, exc_info=True)
         sys.exit(1)
