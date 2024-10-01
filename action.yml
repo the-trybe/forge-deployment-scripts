@@ -6,6 +6,9 @@ inputs:
   forge_api_token:
     description: "Laravel Forge API Token"
     required: true
+  secrets:
+    description: "Secret values to be replaced in the forge-deploy.yml"
+    required: false
   deploy_config:
     description: "Base64-encoded content of forge-deploy.yml"
     required: true
@@ -33,3 +36,4 @@ runs:
       shell: bash
       env:
         FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
+        SECRETS: ${{ inputs.secrets }}

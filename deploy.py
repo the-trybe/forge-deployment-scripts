@@ -9,6 +9,8 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
+from utils import replace_secrets_yaml
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,15 @@ def deploy_site():
 
     with open("forge-deploy.yml", "r") as file:
         data = yaml.safe_load(file)
+
+        # replace secrets
+        secrets_env = os.getenv("SECRETS")
+        if secrets_env:
+            secrets = dict(
+                line.split("=", 1) for line in secret_env.strip().split("\n") if line
+            )
+            data = replace_secrets_yaml(data, secrets)
+
         # TODO: validate data
         config = {
             "server_name": data["server_name"],
