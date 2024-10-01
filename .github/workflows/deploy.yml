@@ -1,0 +1,39 @@
+name: Deploy to Laravel Forge
+
+on:
+  workflow_dispatch:
+    inputs:
+      FORGE_API_TOKEN:
+        description: 'Laravel Forge API Token'
+        required: true
+      DB_PASSWORD:
+        description: 'Database Password'
+        required: true
+      DB_USER:
+        description: 'Database User'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Read forge-deploy.yml content
+        id: read_forge_deploy
+        run: |
+          deploy_config=$(cat forge-deploy.yml | base64 | tr -d '\n')
+          echo "deploy_config=$deploy_config" >> "$GITHUB_OUTPUT"
+        shell: bash
+        continue-on-error: false
+
+      - name: Deploy to Laravel Forge
+        uses: the-trybe/forge-deployment-scripts@main
+        with:
+          forge_api_token: ${{ inputs.FORGE_API_TOKEN }}
+          deploy_config: ${{ steps.read_forge_deploy.outputs.deploy_config }}
+          secrets: |
+            "DB_PASSWORD=${{ inputs.DB_PASSWORD }}"
+            "DB_USER=${{ inputs.DB_USER }}"
