@@ -9,7 +9,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
-from utils import replace_secrets_yaml
+from utils import replace_secrets_yaml, wait_for
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -156,12 +156,15 @@ def deploy_site():
             response.raise_for_status()
             site = response.json()["site"]
 
-            while site["status"] != "installed":
-                time.sleep(1)
+            def until_site_installed(site):
                 site = requests.get(
-                    f"{forge_uri}/servers/{server_id}/sites/{site['id']}",
+                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}",
                     headers=headers,
                 ).json()["site"]
+                return site["status"] == "installed"
+
+            if not wait_for(lambda: until_site_installed(site)):
+                raise Exception("Site creation failed")
 
             logger.info("Site created successfully")
 
@@ -216,9 +219,8 @@ def deploy_site():
                 )
                 response.raise_for_status()
 
-                # TODO: implement max retries for all waits
                 # wait for installation
-                while True:
+                def until_php_installed():
                     res = requests.get(
                         f"{forge_uri}/servers/{server_id}/php", headers=headers
                     )
@@ -230,9 +232,11 @@ def deploy_site():
                             if php["version"] == site_conf["php_version"]
                         ),
                     )
-                    if installed_php["status"] == "installed":
-                        break
-                    time.sleep(2)
+                    return installed_php["status"] == "installed"
+
+                if not wait_for(until_php_installed):
+                    raise Exception("Php installation failed")
+
                 logger.info(f"Php version {site_conf['php_version']} installed")
 
             # update site php version
@@ -264,11 +268,14 @@ def deploy_site():
             response.raise_for_status()
             site = response.json()["site"]
 
-            while site["repository_status"] != "installed":
-                time.sleep(2)
+            def until_repo_installed():
                 site = requests.get(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}", headers=headers
                 ).json()["site"]
+                return site["repository_status"] == "installed"
+
+            if not wait_for(until_repo_installed):
+                raise Exception("Failed to add repository")
 
             logger.info("Repository added successfully")
 
@@ -374,11 +381,14 @@ def deploy_site():
         response.raise_for_status()
         site = response.json()["site"]
 
-        while site["deployment_status"] != None:
-            time.sleep(2)
+        def until_site_deployed():
             site = requests.get(
                 f"{forge_uri}/servers/{server_id}/sites/{site_id}", headers=headers
             ).json()["site"]
+            return site["deployment_status"] == None
+
+        if not wait_for(until_site_deployed):
+            raise Exception("Failed to deploy site")
 
         deployment = requests.get(
             f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment-history",

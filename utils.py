@@ -1,4 +1,5 @@
 import re
+import time
 
 
 def replace_secrets_yaml(data, secrets):
@@ -21,3 +22,15 @@ def replace_secrets_yaml(data, secrets):
         return pattern.sub(replace_match, data)
     else:
         return data
+
+
+def wait_for(callback, max_retries=8):
+    retries = 0
+    timeout = 0.5
+    while retries <= max_retries:
+        if callback():
+            return True
+        time.sleep(timeout)
+        retries += 1
+        timeout *= 2
+    return False
