@@ -5,6 +5,7 @@ This GitHub Action deploys your site using the Laravel Forge API. It reads the d
 ## Inputs
 
 - `forge_api_token` (required): Laravel Forge API Token.
+- `secrets` (required): Secrets to replace in the `forge-deploy.yml` file. The value should be a multi-line string with the format `VAR_NAME=VALUE`.
 - `deploy_config` (required): Base64-encoded content of `forge-deploy.yml`.
 
 ## Usage
@@ -139,10 +140,3 @@ Additional Configuration Options and Customization:
 9. You can add multiple sites in the `sites` array, each with its own configuration. Each site will be configured separately on the Laravel Forge server.
 
 10. You can add secrets to the `forge-deploy.yml` file in the form `${{ secrets.SECRET_VAR }}`. These secrets will be replaced by the values provided in the `secrets` input of the GitHub Action.
-
-**Examples:**
-
-You can find example `forge-deploy.yml` files in the `examples` folder of this repository. These examples provide configurations for different types of projects.
-
-- [Laravel Example](examples/laravel/forge-deploy.yml)
-- [Next.js Example](examples/nextjs/forge-deploy.yml)
