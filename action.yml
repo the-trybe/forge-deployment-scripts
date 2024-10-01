@@ -9,28 +9,39 @@ inputs:
   secrets:
     description: "Secret values to be replaced in the forge-deploy.yml"
     required: false
-  deploy_config:
-    description: "Base64-encoded content of forge-deploy.yml"
-    required: true
 
 runs:
   using: "composite"
   steps:
+    - name: Read and encode forge-deploy.yml content
+      id: read_forge_deploy
+      run: |
+        deploy_config=$(cat forge-deploy.yml | base64 | tr -d '\n')
+        echo "deploy_config=$deploy_config" >> "$GITHUB_OUTPUT"
+      shell: bash
+      continue-on-error: false
+
     - name: Install Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.12"
+
     - uses: actions/checkout@v4
       with:
         repository: the-trybe/forge-deployment-scripts
         ref: main
+
     - name: Install Dependencies
       run: pip install -r requirements.txt
       shell: bash
+      continue-on-error: false
+
     - name: Decode and Save deploy_config
       run: |
-        echo "${{ inputs.deploy_config }}" | base64 --decode > forge-deploy.yml  # Decoding the base64 content back to YAML
+        echo "${{ steps.read_forge_deploy.outputs.deploy_config }}" | base64 --decode > forge-deploy.yml  # Decoding the base64 content back to YAML
       shell: bash
+      continue-on-error: false
+
     - name: Deploy to Laravel Forge
       run: python3 deploy.py
       shell: bash

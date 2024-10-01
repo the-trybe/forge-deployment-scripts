@@ -6,7 +6,6 @@ This GitHub Action deploys your site using the Laravel Forge API. It reads the d
 
 - `forge_api_token` (required): Laravel Forge API Token.
 - `secrets` (required): Secrets to replace in the `forge-deploy.yml` file. The value should be a multi-line string with the format `VAR_NAME=VALUE`.
-- `deploy_config` (required): Base64-encoded content of `forge-deploy.yml`.
 
 ## Usage
 
@@ -25,22 +24,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout the repository
+      - name: Checkout the repository # required
         uses: actions/checkout@v4
-
-      - name: Read forge-deploy.yml content
-        id: read_forge_deploy
-        run: |
-          deploy_config=$(cat forge-deploy.yml | base64 | tr -d '\n')
-          echo "deploy_config=$deploy_config" >> "$GITHUB_OUTPUT"
-        shell: bash
-        continue-on-error: false
 
       - name: Deploy to Laravel Forge
         uses: the-trybe/forge-deployment-scripts@main
         with:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
-          deploy_config: ${{ steps.read_forge_deploy.outputs.deploy_config }}
           secrets: |
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_USER=${{ secrets.DB_USER }}
