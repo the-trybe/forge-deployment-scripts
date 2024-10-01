@@ -9,6 +9,8 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
+from utils import replace_secrets_yaml
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,18 @@ def deploy_site():
 
     with open("forge-deploy.yml", "r") as file:
         data = yaml.safe_load(file)
+
+        # replace secrets
+        secrets_env = os.getenv("SECRETS")
+        if secrets_env:
+            secrets = dict(
+                line.split("=", 1) for line in secrets_env.strip().split("\n") if line
+            )
+            # convert keys to upper case
+            secrets = {key.upper(): value for key, value in secrets.items()}
+
+            data: dict = replace_secrets_yaml(data, secrets)  # type: ignore
+
         # TODO: validate data
         config = {
             "server_name": data["server_name"],
@@ -183,7 +197,9 @@ def deploy_site():
 
         # ---- php version ----
 
-        res = requests.get(f"{forge_uri}/servers/{server_id}/sites/{site_id}", headers=headers)
+        res = requests.get(
+            f"{forge_uri}/servers/{server_id}/sites/{site_id}", headers=headers
+        )
         res.raise_for_status()
         site_php_version = res.json()["site"]["php_version"]
 
@@ -191,9 +207,7 @@ def deploy_site():
             # check if version is installed, if no install it
             res = requests.get(f"{forge_uri}/servers/{server_id}/php", headers=headers)
             res.raise_for_status()
-            if site_conf["php_version"] not in [
-                php["version"] for php in res.json()
-            ]:
+            if site_conf["php_version"] not in [php["version"] for php in res.json()]:
                 logger.info("installing php version...")
                 response = requests.post(
                     f"{forge_uri}/servers/{server_id}/php",
@@ -202,19 +216,24 @@ def deploy_site():
                 )
                 response.raise_for_status()
 
-                #TODO: implement max retries for all waits
-                #wait for installation
+                # TODO: implement max retries for all waits
+                # wait for installation
                 while True:
-                    res = requests.get(f"{forge_uri}/servers/{server_id}/php", headers=headers)
+                    res = requests.get(
+                        f"{forge_uri}/servers/{server_id}/php", headers=headers
+                    )
                     res.raise_for_status()
                     installed_php = next(
-                        (php for php in res.json() if php["version"] == site_conf["php_version"]),
+                        (
+                            php
+                            for php in res.json()
+                            if php["version"] == site_conf["php_version"]
+                        ),
                     )
                     if installed_php["status"] == "installed":
                         break
                     time.sleep(2)
                 logger.info(f"Php version {site_conf['php_version']} installed")
-                
 
             # update site php version
             res = requests.put(
@@ -344,7 +363,7 @@ def deploy_site():
             )
             response.raise_for_status()
             logger.info("Certificate added successfully")
-            #TODO: check if cert is applied (check is_secured)
+            # TODO: check if cert is applied (check is_secured)
 
         # deploy site
         logger.info("Deploying site...")
