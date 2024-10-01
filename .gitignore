@@ -1,3 +1,4 @@
 .env
 venv
 forge-deploy.yml
+__pycache__

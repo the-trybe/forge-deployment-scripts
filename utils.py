@@ -13,7 +13,7 @@ def replace_secrets_yaml(data, secrets):
         pattern = re.compile(r"\$\{\{\s*secrets\.(\w+)\s*\}\}")
 
         def replace_match(match):
-            secret_name = match.group(1)
+            secret_name = match.group(1).upper()
             if secret_name not in secrets:
                 raise ValueError(f"Secret '{secret_name}' value is not set.")
             return secrets[secret_name]
