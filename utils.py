@@ -24,6 +24,22 @@ def replace_secrets_yaml(data, secrets):
         return data
 
 
+def replace_nginx_variables(nginx_conf, variables):
+    pattern = re.compile(r"{{(.*?)}}")
+
+    def replace_match(match):
+        var_name = match.group(1).strip()
+
+        try:
+            var_value = variables[var_name]
+        except KeyError:
+            raise ValueError(f"Variable '{var_name}' value is not set.")
+
+        return str(var_value)
+
+    return pattern.sub(replace_match, nginx_conf)
+
+
 def wait(callback, max_retries=8):
     retries = 0
     timeout = 0.5
