@@ -1,8 +1,6 @@
 import logging
 import os
-import re
 import sys
-import time
 from pathlib import Path
 
 import requests
@@ -11,6 +9,7 @@ from dotenv import load_dotenv
 
 from utils import replace_nginx_variables, replace_secrets_yaml, wait
 
+# TODO: check why this code is not working :(
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 logging.basicConfig(
@@ -108,7 +107,8 @@ def main():
 
     # sites
     for site_conf in config["sites"]:
-        logger.info(f"\t---- Site: {site_conf['site_domain']} ----\n")
+        print("\n")
+        logger.info(f"\t---- Site: {site_conf['site_domain']} ----")
         try:
             response = requests.get(
                 f"{forge_uri}/servers/{server_id}/sites", headers=headers
@@ -259,7 +259,7 @@ def main():
             res = requests.get(f"{forge_uri}/servers/{server_id}/php", headers=headers)
             res.raise_for_status()
             if site_conf["php_version"] not in [php["version"] for php in res.json()]:
-                logger.info("installing php version...")
+                logger.info("Installing php version...")
                 try:
                     response = requests.post(
                         f"{forge_uri}/servers/{server_id}/php",
@@ -308,7 +308,7 @@ def main():
 
         # add repository
         if site["repository"] != config["github_repository"]:
-            logger.info("adding repository...")
+            logger.info("Adding repository...")
             try:
                 response = requests.post(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/git",
@@ -317,9 +317,7 @@ def main():
                         "provider": "github",
                         "repository": config["github_repository"],
                         "branch": config["github_branch"],
-                        "composer": (
-                            True if site_conf["project_type"] == "php" else False
-                        ),
+                        "composer": False,
                     },
                 )
                 response.raise_for_status()
@@ -473,6 +471,7 @@ def main():
             headers=headers,
         ).json()["deployments"][0]
         if deployment["status"] == "failed":
+            # TODO: get deployment logs
             raise Exception("Deployment failed")
         logger.info("Site deployed successfully")
 
