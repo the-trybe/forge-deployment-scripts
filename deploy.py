@@ -409,10 +409,10 @@ def main():
                     headers=headers,
                     json={
                         "content": deployment_script,
-                        "auto_source": (
-                            True if len(site_conf["environment"]) > 0 else False
-                        ),
-                    },  # to make .env available for the build
+                        # disabled auto_source because it causes a problem when code is not in root directory
+                        # because forge creates the env file in the specified directory, but tries to source it from root
+                        "auto_source": False,
+                    },
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
