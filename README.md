@@ -49,7 +49,8 @@ github_branch: "main" # [Optional] The branch to deploy (default: "main").
 # Sites Configuration - list of sites to configure and deploy
 sites:
   - site_domain: "mywebsite.com" # [Required] The primary domain for the site.
-    root_dir: "/public" # [Optional] The root directory relative to the repo root (default: "/").
+    root_dir: "/client" # [Optional] The root directory relative to the repo root (default: "/").
+    web_dir: "/public" # [Optional] The web directory (default: "/public").
     project_type: "php" # [Optional] The type of the project ("php" for Laravel projects, for other types don't include).
     php_version: "php81" # [Optional] PHP version to use (if not installed in the server, it will be installed).
     deployment_commands: # [Optional] List of deployment commands to execute during deployment (if not included forge default will be used).

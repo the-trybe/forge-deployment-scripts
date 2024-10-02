@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 
 from utils import replace_nginx_variables, replace_secrets_yaml, wait
 
-# TODO: check why this code is not working :(
+load_dotenv()
+
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 logging.basicConfig(
@@ -18,8 +19,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 
 def main():
@@ -63,11 +62,15 @@ def main():
         root_dir = site.get("root_dir", ".")
         if root_dir.startswith("/"):
             root_dir = "." + root_dir
+        web_dir = site.get("web_dir", "public")
+        if web_dir.startswith("/"):
+            web_dir = "." + web_dir
 
         config["sites"].append(
             {
                 "site_domain": site["site_domain"],
                 "root_dir": root_dir,
+                "web_dir": web_dir,
                 "project_type": site.get("project_type", "html"),
                 "php_version": site.get("php_version", None),
                 "deployment_commands": site.get("deployment_commands", []),
@@ -181,6 +184,7 @@ def main():
                 "domain": site_conf["site_domain"],
                 "project_type": site_conf["project_type"],
                 "aliases": site_conf["aliases"],
+                "directory": str(Path(site_conf["root_dir"]) / site_conf["web_dir"]),
                 "isolated": False,
                 "nginx_template": nginx_template_id,
             }
@@ -405,10 +409,10 @@ def main():
                     headers=headers,
                     json={
                         "content": deployment_script,
-                        "auto_source": (
-                            True if len(site_conf["environment"]) > 0 else False
-                        ),
-                    },  # to make .env available for the build
+                        # disabled auto_source because it causes a problem when code is not in root directory
+                        # because forge creates the env file in the specified directory, but tries to source it from root
+                        "auto_source": False,
+                    },
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
