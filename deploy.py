@@ -484,5 +484,5 @@ if __name__ == "__main__":
         logger.error("HTTP error occurred: %s", http_err, exc_info=True)
         sys.exit(1)
     except Exception as err:
-        logger.error("An error occurred: %s", err, exc_info=True)
+        logger.error("An error occurred:\n %s", err, exc_info=True)
         sys.exit(1)
