@@ -24,7 +24,7 @@ def replace_secrets_yaml(data, secrets):
         return data
 
 
-def wait_for(callback, max_retries=8):
+def wait(callback, max_retries=8):
     retries = 0
     timeout = 0.5
     while retries <= max_retries:

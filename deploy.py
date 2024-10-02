@@ -9,7 +9,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
-from utils import replace_secrets_yaml, wait_for
+from utils import replace_secrets_yaml, wait
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -163,7 +163,7 @@ def deploy_site():
                 ).json()["site"]
                 return site["status"] == "installed"
 
-            if not wait_for(lambda: until_site_installed(site)):
+            if not wait(lambda: until_site_installed(site)):
                 raise Exception("Site creation failed")
 
             logger.info("Site created successfully")
@@ -234,7 +234,7 @@ def deploy_site():
                     )
                     return installed_php["status"] == "installed"
 
-                if not wait_for(until_php_installed):
+                if not wait(until_php_installed):
                     raise Exception("Php installation failed")
 
                 logger.info(f"Php version {site_conf['php_version']} installed")
@@ -274,7 +274,7 @@ def deploy_site():
                 ).json()["site"]
                 return site["repository_status"] == "installed"
 
-            if not wait_for(until_repo_installed):
+            if not wait(until_repo_installed):
                 raise Exception("Failed to add repository")
 
             logger.info("Repository added successfully")
@@ -387,7 +387,7 @@ def deploy_site():
             ).json()["site"]
             return site["deployment_status"] == None
 
-        if not wait_for(until_site_deployed):
+        if not wait(until_site_deployed):
             raise Exception("Failed to deploy site")
 
         deployment = requests.get(
