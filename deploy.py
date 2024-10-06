@@ -91,14 +91,15 @@ def main():
 
     logger.debug("Config: %s", config)
 
-    headers = {
+    session = requests.sessions.Session()
+    session.headers.update({
         "Authorization": f"Bearer {forge_api_token}",
         "Accept": "application/json",
         "Content-Type": "application/json",
-    }
+    })
 
     try:
-        response = requests.get(f"{forge_uri}/servers", headers=headers)
+        response = session.get(f"{forge_uri}/servers")
         response.raise_for_status()
     except requests.RequestException as e:
         raise Exception("Failed to get server from Laravel Forge API") from e
@@ -116,9 +117,7 @@ def main():
 
     # sites
     try:
-        response = requests.get(
-            f"{forge_uri}/servers/{server_id}/sites", headers=headers
-        )
+        response = session.get(f"{forge_uri}/servers/{server_id}/sites")
         response.raise_for_status()
     except requests.RequestException as e:
         raise Exception("Failed to get sites from Laravel Forge API") from e
@@ -140,8 +139,8 @@ def main():
         if not site:
             # nginx template
             try:
-                response = requests.get(
-                    f"{forge_uri}/servers/{server_id}/nginx/templates", headers=headers
+                response = session.get(
+                    f"{forge_uri}/servers/{server_id}/nginx/templates"
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
@@ -170,9 +169,8 @@ def main():
                         f"nginx_templates/{site_conf['nginx_template']}.conf", "r"
                     ) as file:
                         try:
-                            response = requests.post(
+                            response = session.post(
                                 f"{forge_uri}/servers/{server_id}/nginx/templates",
-                                headers=headers,
                                 json={
                                     "content": file.read(),
                                     "name": site_conf["nginx_template"],
@@ -200,10 +198,9 @@ def main():
             # create site
             logger.info("Creating site...")
             try:
-                response = requests.post(
+                response = session.post(
                     f"{forge_uri}/servers/{server_id}/sites",
                     json=create_site_payload,
-                    headers=headers,
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
@@ -212,9 +209,8 @@ def main():
             site = response.json()["site"]
 
             def until_site_installed(site):
-                site = requests.get(
-                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}",
-                    headers=headers,
+                site = session.get(
+                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}"
                 ).json()["site"]
                 return site["status"] == "installed"
 
@@ -225,9 +221,8 @@ def main():
 
             # set site nginx variables
             try:
-                response = requests.get(
-                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx",
-                    headers=headers,
+                response = session.get(
+                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx"
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
@@ -240,9 +235,8 @@ def main():
                 nginx_config = replace_nginx_variables(
                     nginx_config, site_conf["nginx_config_variables"]
                 )
-                response = requests.put(
+                response = session.put(
                     f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx",
-                    headers=headers,
                     json={"content": nginx_config},
                 )
                 response.raise_for_status()
@@ -258,8 +252,8 @@ def main():
         # ---- php version ----
 
         try:
-            res = requests.get(
-                f"{forge_uri}/servers/{server_id}/sites/{site_id}", headers=headers
+            res = session.get(
+                f"{forge_uri}/servers/{server_id}/sites/{site_id}"
             )
             res.raise_for_status()
             site_php_version = res.json()["site"]["php_version"]
@@ -268,22 +262,21 @@ def main():
 
         if site_conf["php_version"] and site_conf["php_version"] != site_php_version:
             # check if version is installed, if not install it
-            res = requests.get(f"{forge_uri}/servers/{server_id}/php", headers=headers)
+            res = session.get(f"{forge_uri}/servers/{server_id}/php")
             res.raise_for_status()
             if site_conf["php_version"] not in [php["version"] for php in res.json()]:
                 logger.info("Installing php version...")
                 try:
-                    response = requests.post(
+                    response = session.post(
                         f"{forge_uri}/servers/{server_id}/php",
-                        headers=headers,
                         json={"version": site_conf["php_version"]},
                     )
                     response.raise_for_status()
 
                     # wait for installation
                     def until_php_installed():
-                        res = requests.get(
-                            f"{forge_uri}/servers/{server_id}/php", headers=headers
+                        res = session.get(
+                            f"{forge_uri}/servers/{server_id}/php"
                         )
                         res.raise_for_status()
                         installed_php = next(
@@ -304,9 +297,8 @@ def main():
 
             # update site php version
             try:
-                res = requests.put(
+                res = session.put(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/php",
-                    headers=headers,
                     json={"version": site_conf["php_version"]},
                 )
                 res.raise_for_status()
@@ -322,9 +314,8 @@ def main():
         if site["repository"] != config["github_repository"]:
             logger.info("Adding repository...")
             try:
-                response = requests.post(
+                response = session.post(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/git",
-                    headers=headers,
                     json={
                         "provider": "github",
                         "repository": config["github_repository"],
@@ -337,9 +328,8 @@ def main():
                 site = response.json()["site"]
 
                 def until_repo_installed():
-                    site = requests.get(
+                    site = session.get(
                         f"{forge_uri}/servers/{server_id}/sites/{site_id}",
-                        headers=headers,
                     ).json()["site"]
                     return site["repository_status"] == "installed"
 
@@ -354,8 +344,8 @@ def main():
         try:
             daemon_ids = []
             # get existing site daemons
-            response = requests.get(
-                f"{forge_uri}/servers/{server_id}/daemons", headers=headers
+            response = session.get(
+                f"{forge_uri}/servers/{server_id}/daemons"
             )
             response.raise_for_status()
             # existing site daemons
@@ -369,9 +359,8 @@ def main():
                 if dm["command"] not in [
                     daemon["command"] for daemon in site_conf["daemons"]
                 ]:
-                    response = requests.delete(
-                        f"{forge_uri}/servers/{server_id}/daemons/{dm['id']}",
-                        headers=headers,
+                    response = session.delete(
+                        f"{forge_uri}/servers/{server_id}/daemons/{dm['id']}"
                     )
                     response.raise_for_status()
                 else:
@@ -380,9 +369,8 @@ def main():
             # add new daemons
             for daemon in site_conf["daemons"]:
                 if daemon["command"] not in [dm["command"] for dm in site_daemons]:
-                    response = requests.post(
+                    response = session.post(
                         f"{forge_uri}/servers/{server_id}/daemons",
-                        headers=headers,
                         json={
                             "command": daemon["command"],
                             "user": "forge",
@@ -411,9 +399,8 @@ def main():
                 deployment_script += f"sudo -S supervisorctl restart daemon-{d_id}:*\n"
 
             try:
-                response = requests.put(
+                response = session.put(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/script",
-                    headers=headers,
                     json={
                         "content": deployment_script,
                         # disabled auto_source because it causes a problem when code is not in root directory
@@ -433,9 +420,8 @@ def main():
             for key, value in site_conf["environment"].items():
                 env += f'{key}="{value}"\n'
             if len(env) > 0:
-                response = requests.put(
+                response = session.put(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/env",
-                    headers=headers,
                     json={
                         "content": env,
                     },
@@ -448,17 +434,15 @@ def main():
         # certificate
         if site_conf["certificate"] and not site["is_secured"]:
             try:
-                response = requests.post(
+                response = session.post(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/certificates/letsencrypt",
-                    headers=headers,
                     json={"domains": [site_conf["site_domain"], *site_conf["aliases"]]},
                 )
                 response.raise_for_status()
 
                 def until_cert_applied():
-                    site = requests.get(
-                        f"{forge_uri}/servers/{server_id}/sites/{site_id}",
-                        headers=headers,
+                    site = session.get(
+                        f"{forge_uri}/servers/{server_id}/sites/{site_id}"
                     ).json()["site"]
                     return site["is_secured"]
 
@@ -471,16 +455,15 @@ def main():
 
         # deploy site
         logger.info("Deploying site...")
-        response = requests.post(
-            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/deploy",
-            headers=headers,
+        response = session.post(
+            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/deploy"
         )
         response.raise_for_status()
         site = response.json()["site"]
 
         def until_site_deployed():
-            site = requests.get(
-                f"{forge_uri}/servers/{server_id}/sites/{site_id}", headers=headers
+            site = session.get(
+                f"{forge_uri}/servers/{server_id}/sites/{site_id}"
             ).json()["site"]
             return site["deployment_status"] == None
 
@@ -488,18 +471,16 @@ def main():
             raise Exception("Deploying site timed out")
 
         # get deployment log
-        response = requests.get(
-            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/log",
-            headers=headers,
+        response = session.get(
+            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/log"
         )
         response.raise_for_status()
         dep_log = response.content.decode("utf-8")
         logger.info("Deployment log:\n%s", dep_log)
 
         # check deployment status
-        deployment = requests.get(
-            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment-history",
-            headers=headers,
+        deployment = session.get(
+            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment-history"
         ).json()["deployments"][0]
         if deployment["status"] == "failed":
             raise Exception("Deployment failed")
