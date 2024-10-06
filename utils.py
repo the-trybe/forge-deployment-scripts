@@ -28,9 +28,8 @@ def validate_yaml_data(data):
                     },
                     "php_version": {"type": "string", "required": False},
                     "deployment_commands": {
-                        "type": "list",
+                        "type": "string",
                         "required": False,
-                        "default": [],
                     },
                     "daemons": {"type": "list", "required": False, "default": []},
                     "environment": {"type": "dict", "required": False, "default": {}},

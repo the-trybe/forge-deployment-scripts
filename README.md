@@ -53,9 +53,10 @@ sites:
     web_dir: "/public" # [Optional] The web directory (default: "/public").
     project_type: "php" # [Optional] The type of the project ("php" for Laravel projects, for other types don't include).
     php_version: "php81" # [Optional] PHP version to use (if not installed in the server, it will be installed).
-    deployment_commands: # [Optional] List of deployment commands to execute during deployment (if not included forge default will be used).
-      - composer install --no-interaction --prefer-dist --optimize-autoloader
-      - php artisan migrate --force
+    deployment_commands:
+      | # [Optional] deployment commands to execute during deployment (if not included forge default will be used).
+      composer install --no-interaction --prefer-dist --optimize-autoloader
+      php artisan migrate --force
     environment: # [Optional] Environment variables specific to this site.
       APP_ENV: "production"
       DB_CONNECTION: "mysql"
@@ -76,9 +77,9 @@ sites:
 
   - site_domain: "myotherwebsite.com"
     root_dir: "/public_html" # Specify a different root directory.
-    deployment_commands:
-      - npm install
-      - npm run build
+    deployment_commands: |
+      npm install
+      npm run build
     environment: # Example of a different environment configuration.
       API_URL: "https://api.myotherwebsite.com"
       FEATURE_FLAG: "enabled"
@@ -91,9 +92,9 @@ sites:
       - command: "node server.js"
 
   - site_domain: "api.mywebsite.com" # Example of an API-specific site.
-    deployment_commands:
-      - npm ci
-      - npm run build
+    deployment_commands: |
+      npm ci
+      npm run build
     environment:
       NODE_ENV: "production"
       API_KEY: "12345"
