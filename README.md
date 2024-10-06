@@ -71,6 +71,7 @@ sites:
     nginx_config_variables: # [Optional] Variables to replace in the Nginx template.
       PROXY_PASS_PORT: 8080
     certificate: true # [Optional] Boolean to enable or disable SSL certificate for this domain (default: false).
+    clone_repository: true # [Optional] Boolean to clone the repository (default: true).
     daemons: # [Optional] List of daemons or processes to run in the background.
       - command: "php artisan queue:work"
       - command: "php artisan schedule:run"

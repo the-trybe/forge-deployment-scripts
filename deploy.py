@@ -86,6 +86,7 @@ def main():
                 "nginx_template": site.get("nginx_template", "default"),
                 "nginx_config_variables": site.get("nginx_config_variables", {}),
                 "certificate": site.get("certificate", False),
+                "clone_repository": site.get("clone_repository", True),
             }
         )
 
@@ -311,7 +312,10 @@ def main():
         )
 
         # add repository
-        if site["repository"] != config["github_repository"]:
+        if (
+            site_conf["clone_repository"]
+            and site["repository"] != config["github_repository"]
+        ):
             logger.info("Adding repository...")
             try:
                 response = session.post(
@@ -427,9 +431,9 @@ def main():
                     },
                 )
                 response.raise_for_status()
+                logger.info("Environment variables set successfully")
         except requests.RequestException as e:
             raise Exception(f"Failed to set environment variables: {e}") from e
-        logger.info("Environment variables set successfully")
 
         # certificate
         if site_conf["certificate"] and not site["is_secured"]:
@@ -454,38 +458,43 @@ def main():
             logger.info("Certificate added successfully")
 
         # deploy site
-        logger.info("Deploying site...")
-        response = session.post(
-            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/deploy"
-        )
-        response.raise_for_status()
-        site = response.json()["site"]
+        if site_conf["clone_repository"]:
+            logger.info("Deploying site...")
+            response = session.post(
+                f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/deploy"
+            )
+            response.raise_for_status()
+            site = response.json()["site"]
 
-        def until_site_deployed():
-            site = session.get(
-                f"{forge_uri}/servers/{server_id}/sites/{site_id}"
-            ).json()["site"]
-            return site["deployment_status"] == None
+            def until_site_deployed():
+                site = session.get(
+                    f"{forge_uri}/servers/{server_id}/sites/{site_id}"
+                ).json()["site"]
+                return site["deployment_status"] == None
 
-        if not wait(until_site_deployed):
-            raise Exception("Deploying site timed out")
+            if not wait(until_site_deployed):
+                raise Exception("Deploying site timed out")
 
-        # get deployment log
-        response = session.get(
-            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/log"
-        )
-        response.raise_for_status()
-        dep_log = response.content.decode("utf-8")
-        logger.info("Deployment log:\n%s", dep_log)
+            # get deployment log
+            try:
+                response = session.get(
+                    f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/log",
+                )
+                response.raise_for_status()
+                dep_log = response.content.decode("utf-8")
+                logger.info("Deployment log:\n%s", dep_log)
+            except requests.exceptions.HTTPError as e:
+                if response.status_code != 404:
+                    raise Exception("Failed to get deployment log") from e
 
-        # check deployment status
-        deployment = session.get(
-            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment-history"
-        ).json()["deployments"][0]
-        if deployment["status"] == "failed":
-            raise Exception("Deployment failed")
+            # check deployment status
+            deployment = session.get(
+                f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment-history",
+            ).json()["deployments"][0]
+            if deployment["status"] == "failed":
+                raise Exception("Deployment failed")
 
-        logger.info("Site deployed successfully")
+            logger.info("Site deployed successfully")
 
 
 if __name__ == "__main__":
