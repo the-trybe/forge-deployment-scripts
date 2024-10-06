@@ -447,9 +447,19 @@ def main():
                     json={"domains": [site_conf["site_domain"], *site_conf["aliases"]]},
                 )
                 response.raise_for_status()
+
+                def until_cert_applied():
+                    site = requests.get(
+                        f"{forge_uri}/servers/{server_id}/sites/{site_id}",
+                        headers=headers,
+                    ).json()["site"]
+                    return site["is_secured"]
+
+                if not wait(until_cert_applied, max_retries=4):
+                    raise Exception("Applying certificate timed out")
             except requests.RequestException as e:
                 raise Exception(f"Failed to add certificate: {e}") from e
-            # TODO: check if cert is applied (check is_secured)
+
             logger.info("Certificate added successfully")
 
         # deploy site
