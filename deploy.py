@@ -115,20 +115,22 @@ def main():
         raise Exception(f"Server `{config["server_name"]}` not found")
 
     # sites
+    try:
+        response = requests.get(
+            f"{forge_uri}/servers/{server_id}/sites", headers=headers
+        )
+        response.raise_for_status()
+    except requests.RequestException as e:
+        raise Exception("Failed to get sites from Laravel Forge API") from e
+    sites = response.json()["sites"]
     for site_conf in config["sites"]:
         print("\n")
         logger.info(f"\t---- Site: {site_conf['site_domain']} ----")
-        try:
-            response = requests.get(
-                f"{forge_uri}/servers/{server_id}/sites", headers=headers
-            )
-            response.raise_for_status()
-        except requests.RequestException as e:
-            raise Exception("Failed to get sites from Laravel Forge API") from e
+        
         site = next(
             (
                 site
-                for site in response.json()["sites"]
+                for site in sites
                 if site["name"] == site_conf["site_domain"]
             ),
             None,
