@@ -7,7 +7,12 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
-from utils import replace_nginx_variables, replace_secrets_yaml, wait
+from utils import (
+    replace_nginx_variables,
+    replace_secrets_yaml,
+    validate_yaml_data,
+    wait,
+)
 
 load_dotenv()
 
@@ -49,8 +54,9 @@ def main():
         except Exception as e:
             raise Exception(f"Error replacing secrets: {e}") from e
 
-    # TODO: validate data
     logger.debug("YAML data: %s", data)
+
+    validate_yaml_data(data)
 
     config = {
         "server_name": data["server_name"],
