@@ -470,13 +470,23 @@ def main():
         if not wait(until_site_deployed):
             raise Exception("Deploying site timed out")
 
+        # get deployment log
+        response = requests.get(
+            f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment/log",
+            headers=headers,
+        )
+        response.raise_for_status()
+        dep_log = response.content.decode("utf-8")
+        logger.info("Deployment log:\n%s", dep_log)
+
+        # check deployment status
         deployment = requests.get(
             f"{forge_uri}/servers/{server_id}/sites/{site_id}/deployment-history",
             headers=headers,
         ).json()["deployments"][0]
         if deployment["status"] == "failed":
-            # TODO: get deployment logs
             raise Exception("Deployment failed")
+
         logger.info("Site deployed successfully")
 
 
