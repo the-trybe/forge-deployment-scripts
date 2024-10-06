@@ -184,7 +184,30 @@ def main():
                         logger.info("Nginx template created successfully")
                 else:
                     raise Exception("Invalid nginx template name")
-            # TODO: else update the template if it changed
+            # else update the template if it changed
+            else:
+                response = session.get(
+                    f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}"
+                )
+                response.raise_for_status()
+                server_template = response.json()["template"]["content"]
+                with open(
+                    f"nginx_templates/{site_conf['nginx_template']}.conf", "r"
+                ) as file:
+                    local_template = file.read()
+
+                if server_template != local_template:
+                    try:
+                        response = session.put(
+                            f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}",
+                            json={"content": local_template},
+                        )
+                        response.raise_for_status()
+                        logger.info("Nginx template updated successfully")
+                    except requests.RequestException as e:
+                        raise Exception(
+                            "Failed to update nginx template from Laravel Forge API"
+                        ) from e
 
             create_site_payload = {
                 "domain": site_conf["site_domain"],
