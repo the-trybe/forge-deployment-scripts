@@ -1,6 +1,66 @@
 import re
 import time
 
+from cerberus import Validator
+
+
+def validate_yaml_data(data):
+    schema = {
+        "server_name": {"type": "string", "required": True},
+        "github_repository": {"type": "string", "required": True},
+        "github_branch": {"type": "string", "required": False, "default": "main"},
+        "sites": {
+            "type": "list",
+            "schema": {
+                "type": "dict",
+                "schema": {
+                    "site_domain": {"type": "string", "required": True},
+                    "root_dir": {"type": "string", "required": False, "default": "."},
+                    "web_dir": {
+                        "type": "string",
+                        "required": False,
+                        "default": "public",
+                    },
+                    "project_type": {
+                        "type": "string",
+                        "required": False,
+                        "default": "html",
+                    },
+                    "php_version": {"type": "string", "required": False},
+                    "deployment_commands": {
+                        "type": "list",
+                        "required": False,
+                        "default": [],
+                    },
+                    "daemons": {"type": "list", "required": False, "default": []},
+                    "environment": {"type": "dict", "required": False, "default": {}},
+                    "aliases": {"type": "list", "required": False, "default": []},
+                    "nginx_template": {
+                        "type": "string",
+                        "required": False,
+                        "default": "default",
+                    },
+                    "nginx_config_variables": {
+                        "type": "dict",
+                        "required": False,
+                        "default": {},
+                    },
+                    "certificate": {
+                        "type": "boolean",
+                        "required": False,
+                        "default": False,
+                    },
+                },
+            },
+            "required": False,
+            "default": [],
+        },
+    }
+
+    v = Validator(schema)  # type: ignore
+    if not v.validate(data):  # type: ignore
+        raise Exception(f"YAML data validation failed: {v.errors}")  # type: ignore
+
 
 def replace_secrets_yaml(data, secrets):
     if isinstance(data, dict):
