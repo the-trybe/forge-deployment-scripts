@@ -42,6 +42,11 @@ schema = {
                     "required": False,
                     "default": False,
                 },
+                "clone_repository": {
+                    "type": "boolean",
+                    "required": False,
+                    "default": True,
+                },
             },
         },
         "required": False,
