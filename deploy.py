@@ -93,11 +93,13 @@ def main():
     logger.debug("Config: %s", config)
 
     session = requests.sessions.Session()
-    session.headers.update({
-        "Authorization": f"Bearer {forge_api_token}",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    })
+    session.headers.update(
+        {
+            "Authorization": f"Bearer {forge_api_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+    )
 
     try:
         response = session.get(f"{forge_uri}/servers")
@@ -126,13 +128,9 @@ def main():
     for site_conf in config["sites"]:
         print("\n")
         logger.info(f"\t---- Site: {site_conf['site_domain']} ----")
-        
+
         site = next(
-            (
-                site
-                for site in sites
-                if site["name"] == site_conf["site_domain"]
-            ),
+            (site for site in sites if site["name"] == site_conf["site_domain"]),
             None,
         )
 
@@ -186,6 +184,7 @@ def main():
                         logger.info("Nginx template created successfully")
                 else:
                     raise Exception("Invalid nginx template name")
+            # TODO: else update the template if it changed
 
             create_site_payload = {
                 "domain": site_conf["site_domain"],
@@ -253,9 +252,7 @@ def main():
         # ---- php version ----
 
         try:
-            res = session.get(
-                f"{forge_uri}/servers/{server_id}/sites/{site_id}"
-            )
+            res = session.get(f"{forge_uri}/servers/{server_id}/sites/{site_id}")
             res.raise_for_status()
             site_php_version = res.json()["site"]["php_version"]
         except Exception as e:
@@ -276,9 +273,7 @@ def main():
 
                     # wait for installation
                     def until_php_installed():
-                        res = session.get(
-                            f"{forge_uri}/servers/{server_id}/php"
-                        )
+                        res = session.get(f"{forge_uri}/servers/{server_id}/php")
                         res.raise_for_status()
                         installed_php = next(
                             (
@@ -348,9 +343,7 @@ def main():
         try:
             daemon_ids = []
             # get existing site daemons
-            response = session.get(
-                f"{forge_uri}/servers/{server_id}/daemons"
-            )
+            response = session.get(f"{forge_uri}/servers/{server_id}/daemons")
             response.raise_for_status()
             # existing site daemons
             site_daemons = [
