@@ -454,6 +454,7 @@ def main():
         # certificate
         if site_conf["certificate"] and not site["is_secured"]:
             try:
+                logger.info("Adding certificate...")
                 response = session.post(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/certificates/letsencrypt",
                     json={"domains": [site_conf["site_domain"], *site_conf["aliases"]]},
@@ -466,7 +467,7 @@ def main():
                     ).json()["site"]
                     return site["is_secured"]
 
-                if not wait(until_cert_applied, max_retries=4):
+                if not wait(until_cert_applied, max_retries=6):
                     raise Exception("Applying certificate timed out")
             except requests.RequestException as e:
                 raise Exception(f"Failed to add certificate: {e}") from e
