@@ -5,7 +5,7 @@ This GitHub Action deploys your site using the Laravel Forge API. It reads the d
 ## Inputs
 
 - `forge_api_token` (required): Laravel Forge API Token.
-- `secrets` (required): Secrets to replace in the `forge-deploy.yml` file. The value should be a multi-line string with the format `VAR_NAME=VALUE`.
+- `secrets` (optional): Secrets to replace in the `forge-deploy.yml` file. The value should be a multi-line string with the format `VAR_NAME=VALUE`.
 
 ## Usage
 
