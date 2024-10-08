@@ -467,7 +467,7 @@ def main():
                     ).json()["site"]
                     return site["is_secured"]
 
-                if not wait(until_cert_applied, max_retries=6):
+                if not wait(until_cert_applied):
                     raise Exception("Applying certificate timed out")
             except requests.RequestException as e:
                 raise Exception(f"Failed to add certificate: {e}") from e
@@ -489,7 +489,7 @@ def main():
                 ).json()["site"]
                 return site["deployment_status"] == None
 
-            if not wait(until_site_deployed):
+            if not wait(until_site_deployed, max_retries=-1):
                 raise Exception("Deploying site timed out")
 
             # get deployment log
