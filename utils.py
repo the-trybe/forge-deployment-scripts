@@ -53,10 +53,12 @@ def replace_nginx_variables(nginx_conf, variables):
 def wait(callback, max_retries=8):
     retries = 0
     timeout = 0.5
-    while retries <= max_retries:
+    max_timeout = 30
+    # max_retries < 0 means infinite retries
+    while max_retries < 0 or retries <= max_retries:
         if callback():
             return True
         time.sleep(timeout)
         retries += 1
-        timeout *= 2
+        timeout = min(timeout * 2, max_timeout)
     return False
