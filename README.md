@@ -5,6 +5,8 @@ This GitHub Action deploys your site using the Laravel Forge API. It reads the d
 ## Inputs
 
 - `forge_api_token` (required): Laravel Forge API Token.
+- `deployment_file` (optional): The deployment configuration file (default: `forge-deploy.yml`).
+- `debug` (optional): Enable debug mode in logs (default: `false`).
 - `secrets` (optional): Secrets to replace in the `forge-deploy.yml` file. The value should be a multi-line string with the format `VAR_NAME=VALUE`.
 
 ## Usage
@@ -32,6 +34,7 @@ jobs:
         with:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
           deployment_file: forge-deploy.yml # [Optional] The deployment configuration file (default: forge-deploy.yml).
+          debug: false # [Optional] Enable debug mode in logs (default: false).
           secrets: |
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_USER=${{ secrets.DB_USER }}
