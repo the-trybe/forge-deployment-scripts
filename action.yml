@@ -14,6 +14,11 @@ inputs:
     description: "Secret values to be replaced in the deployment config file"
     required: false
 
+  debug:
+    description: "Enable debug mode"
+    required: false
+    default: "false"
+
 runs:
   using: "composite"
   steps:
@@ -57,3 +62,4 @@ runs:
         FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
         DEPLOYMENT_FILE: ${{ inputs.deployment_file }}
         SECRETS: ${{ inputs.secrets }}
+        DEBUG: ${{ inputs.debug }}
