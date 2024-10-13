@@ -58,14 +58,14 @@ sites:
       | # [Optional] deployment commands to execute during deployment (if not included forge default will be used).
       composer install --no-interaction --prefer-dist --optimize-autoloader
       php artisan migrate --force
-    environment: # [Optional] Environment variables specific to this site.
-      APP_ENV: "production"
-      DB_CONNECTION: "mysql"
-      DB_HOST: "127.0.0.1"
-      DB_PORT: 3306
-      DB_DATABASE: "mywebsite_db"
-      DB_USERNAME: ${{secrets.DB_USER}}
-      DB_PASSWORD: ${{secrets.DB_PASSWORD}}
+    environment: | # [Optional] Environment variables specific to this site.
+      APP_ENV="production"
+      DB_CONNECTION="mysql"
+      DB_HOST="127.0.0.1"
+      DB_PORT=3306
+      DB_DATABASE="mywebsite_db"
+      DB_USERNAME=${{secrets.DB_USER}}
+      DB_PASSWORD=${{secrets.DB_PASSWORD}}
     aliases: # [Optional] Additional domain aliases.
       - "www.mywebsite.com"
     nginx_template: "default" # [Optional] Nginx template to use from `nignx_templates` folder (default: "default").
@@ -82,9 +82,9 @@ sites:
     deployment_commands: |
       npm install
       npm run build
-    environment: # Example of a different environment configuration.
-      API_URL: "https://api.myotherwebsite.com"
-      FEATURE_FLAG: "enabled"
+    environment: | # Example of a different environment configuration.
+      API_URL="https://api.myotherwebsite.com"
+      FEATURE_FLAG="enabled"
     nginx_template: "custom_template" # Custom Nginx template from the nginx_templates folder.
     nginx_config_variables:
       UPSTREAM_SERVER: "127.0.0.1"
@@ -97,14 +97,14 @@ sites:
     deployment_commands: |
       npm ci
       npm run build
-    environment:
-      NODE_ENV: "production"
-      API_KEY: "12345"
-      DB_CONNECTION: "postgres"
-      DB_HOST: "localhost"
-      DB_PORT: 5432
-      DB_USER: "api_user"
-      DB_PASSWORD: "apipassword"
+    environment: |
+      NODE_ENV="production"
+      API_KEY="12345"
+      DB_CONNECTION="postgres"
+      DB_HOST="localhost"
+      DB_PORT=5432
+      DB_USER="api_user"
+      DB_PASSWORD="apipassword"
     nginx_template: "reverse-proxy"
     nginx_config_variables:
       PROXY_PASS_PORT: 3000

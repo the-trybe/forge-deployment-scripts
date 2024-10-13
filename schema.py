@@ -25,7 +25,7 @@ schema = {
                     "required": False,
                 },
                 "daemons": {"type": "list", "required": False, "default": []},
-                "environment": {"type": "dict", "required": False, "default": {}},
+                "environment": {"type": "string", "required": False},
                 "aliases": {"type": "list", "required": False, "default": []},
                 "nginx_template": {
                     "type": "string",

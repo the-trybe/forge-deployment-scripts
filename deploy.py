@@ -83,7 +83,7 @@ def main():
                 "php_version": site.get("php_version", None),
                 "deployment_commands": site.get("deployment_commands", None),
                 "daemons": site.get("daemons", []),
-                "environment": site.get("environment", {}),
+                "environment": site.get("environment", None),
                 "aliases": site.get("aliases", []),
                 "nginx_template": site.get("nginx_template", "default"),
                 "nginx_config_variables": site.get("nginx_config_variables", {}),
@@ -438,18 +438,16 @@ def main():
 
         # set env
         try:
-            env = ""
-            for key, value in site_conf["environment"].items():
-                env += f'{key}="{value}"\n'
-            if len(env) > 0:
+            if site_conf["environment"]:
                 response = session.put(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/env",
                     json={
-                        "content": env,
+                        "content": site_conf["environment"],
                     },
                 )
                 response.raise_for_status()
                 logger.info("Environment variables set successfully")
+
         except requests.RequestException as e:
             raise Exception(f"Failed to set environment variables: {e}") from e
 
