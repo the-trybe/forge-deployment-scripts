@@ -31,6 +31,7 @@ jobs:
         uses: the-trybe/forge-deployment-scripts@main
         with:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
+          deployment_file: forge-deploy.yml # [Optional] The deployment configuration file (default: forge-deploy.yml).
           secrets: |
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_USER=${{ secrets.DB_USER }}
