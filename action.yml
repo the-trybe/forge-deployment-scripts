@@ -6,6 +6,10 @@ inputs:
   forge_api_token:
     description: "Laravel Forge API Token"
     required: true
+  deployment_file:
+    description: "Path to the forge-deploy.yml file"
+    required: false
+    default: "forge-deploy.yml"
   secrets:
     description: "Secret values to be replaced in the forge-deploy.yml"
     required: false
@@ -47,4 +51,5 @@ runs:
       shell: bash
       env:
         FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
+        DEPLOYMENT_FILE: ${{ inputs.deployment_file }}
         SECRETS: ${{ inputs.secrets }}

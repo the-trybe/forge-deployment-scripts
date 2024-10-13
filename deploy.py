@@ -32,11 +32,13 @@ def main():
     if forge_api_token is None:
         raise Exception("FORGE_API_TOKEN is not set")
 
+    dep_file = os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+
     try:
-        with open("forge-deploy.yml", "r") as file:
+        with open(dep_file, "r") as file:
             data = yaml.safe_load(file)
     except FileNotFoundError as e:
-        raise Exception("The configuration file 'forge-deploy.yml' is missing.") from e
+        raise Exception(f"The configuration file {dep_file} is missing.") from e
     except yaml.YAMLError as e:
         raise Exception(f"Error parsing YAML file: {e}") from e
 
