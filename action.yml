@@ -22,16 +22,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Read and encode deployment config content
-      id: read_forge_deploy
-      run: |
-        deploy_config=$(cat $DEPLOYMENT_FILE | base64 | tr -d '\n')
-        echo "deploy_config=$deploy_config" >> "$GITHUB_OUTPUT"
-      shell: bash
-      env:
-        DEPLOYMENT_FILE: ${{ inputs.deployment_file }}
-      continue-on-error: false
-
     - name: Install Python
       uses: actions/setup-python@v4
       with:
@@ -40,23 +30,15 @@ runs:
     - uses: actions/checkout@v4
       with:
         repository: the-trybe/forge-deployment-scripts
-        ref: main
+        path: forge-deployment-scripts
 
     - name: Install Dependencies
-      run: pip install -r requirements.txt
+      run: pip install -r forge-deployment-scripts/requirements.txt
       shell: bash
       continue-on-error: false
-
-    - name: Decode and Save deploy_config
-      run: |
-        echo "${{ steps.read_forge_deploy.outputs.deploy_config }}" | base64 --decode > $DEPLOYMENT_FILE  # Decoding the base64 content back to YAML
-      shell: bash
-      continue-on-error: false
-      env:
-        DEPLOYMENT_FILE: ${{ inputs.deployment_file }}
 
     - name: Deploy to Laravel Forge
-      run: python3 deploy.py
+      run: python3 forge-deployment-scripts/deploy.py
       shell: bash
       env:
         FORGE_API_TOKEN: ${{ inputs.forge_api_token }}

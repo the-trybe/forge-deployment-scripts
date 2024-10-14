@@ -1,5 +1,6 @@
 import re
 import time
+from pathlib import Path
 
 from cerberus import Validator
 
@@ -76,3 +77,7 @@ def parse_env(env: str) -> dict:
                     f"Error: Could not parse line: '{line}'. Make sure each line has a key and a value separated by '='."
                 )
     return parsed_env
+
+
+def cat_paths(*paths):
+    return str(Path(*paths))

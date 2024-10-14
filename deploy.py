@@ -8,6 +8,7 @@ import yaml
 from dotenv import load_dotenv
 
 from utils import (
+    cat_paths,
     parse_env,
     replace_nginx_variables,
     replace_secrets_yaml,
@@ -26,6 +27,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Path to the code repository content (repo that uses the action)
+# "../" because the action code is in a sub directory (check action.yml)
+CODE_REPO_PATH = "../"
+
 
 def main():
     forge_uri = "https://forge.laravel.com/api/v1"
@@ -33,7 +38,9 @@ def main():
     if forge_api_token is None:
         raise Exception("FORGE_API_TOKEN is not set")
 
-    dep_file = os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+    dep_file = cat_paths(
+        CODE_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+    )
 
     try:
         with open(dep_file, "r") as file:
@@ -438,15 +445,21 @@ def main():
         try:
             site_env = {}
             # read env file
-            if site_conf["env_file"] and os.path.exists(site_conf["env_file"]):
-                with open(site_conf["env_file"], "r") as file:
-                    logger.info(
-                        "Loading environment variables from file `%s`",
-                        site_conf["env_file"],
-                    )
-                    file_env = parse_env(file.read())
-                    logger.debug("Env variables loaded from file:\n%s", file_env)
-                    site_env.update(file_env)
+            if site_conf["env_file"]:
+                env_file_path = cat_paths(CODE_REPO_PATH, site_conf["env_file"])
+                try:
+                    with open(env_file_path, "r") as file:
+                        logger.info(
+                            "Loading environment variables from file `%s`",
+                            site_conf["env_file"],
+                        )
+                        file_env = parse_env(file.read())
+                        logger.debug("Env variables loaded from file:\n%s", file_env)
+                        site_env.update(file_env)
+                except FileNotFoundError as e:
+                    raise Exception(
+                        f"Environment file `{site_conf['env_file']}` not found"
+                    ) from e
 
             if site_conf["environment"]:
                 config_env = parse_env(site_conf["environment"])
