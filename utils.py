@@ -62,3 +62,17 @@ def wait(callback, max_retries=8):
         retries += 1
         timeout = min(timeout * 2, max_timeout)
     return False
+
+
+def parse_env(env: str) -> dict:
+    parsed_env = {}
+    for line in env.strip().split("\n"):
+        if line:
+            try:
+                key, value = line.split("=", 1)
+                parsed_env[key.strip().upper()] = value.strip()
+            except ValueError:
+                print(
+                    f"Error: Could not parse line: '{line}'. Make sure each line has a key and a value separated by '='."
+                )
+    return parsed_env

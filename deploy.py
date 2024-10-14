@@ -8,6 +8,7 @@ import yaml
 from dotenv import load_dotenv
 
 from utils import (
+    parse_env,
     replace_nginx_variables,
     replace_secrets_yaml,
     validate_yaml_data,
@@ -43,13 +44,9 @@ def main():
         raise Exception(f"Error parsing YAML file: {e}") from e
 
     # replace secrets
-    secrets_env = os.getenv("SECRETS")
+    secrets_env = os.getenv("SECRETS", None)
     if secrets_env:
-        secrets = dict(
-            line.split("=", 1) for line in secrets_env.strip().split("\n") if line
-        )
-        # convert keys to upper case
-        secrets = {key.upper(): value for key, value in secrets.items()}
+        secrets = parse_env(secrets_env)
 
         try:
             data: dict = replace_secrets_yaml(data, secrets)  # type: ignore
@@ -84,6 +81,7 @@ def main():
                 "deployment_commands": site.get("deployment_commands", None),
                 "daemons": site.get("daemons", []),
                 "environment": site.get("environment", None),
+                "env_file": site.get("env_file", None),
                 "aliases": site.get("aliases", []),
                 "nginx_template": site.get("nginx_template", "default"),
                 "nginx_config_variables": site.get("nginx_config_variables", {}),
@@ -438,17 +436,35 @@ def main():
 
         # set env
         try:
+            site_env = {}
+            # read env file
+            if site_conf["env_file"] and os.path.exists(site_conf["env_file"]):
+                with open(site_conf["env_file"], "r") as file:
+                    logger.info(
+                        "Loading environment variables from file `%s`",
+                        site_conf["env_file"],
+                    )
+                    file_env = parse_env(file.read())
+                    logger.debug("Env variables loaded from file:\n%s", file_env)
+                    site_env.update(file_env)
+
             if site_conf["environment"]:
+                config_env = parse_env(site_conf["environment"])
+                logger.debug("Env variables loaded from config:\n%s", config_env)
+                site_env.update(config_env)
+
+            env_str = "\n".join([f"{k}={v}" for k, v in site_env.items()])
+            if len(env_str) > 0:
                 response = session.put(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/env",
                     json={
-                        "content": site_conf["environment"],
+                        "content": env_str,
                     },
                 )
                 response.raise_for_status()
                 logger.info("Environment variables set successfully")
 
-        except requests.RequestException as e:
+        except Exception as e:
             raise Exception(f"Failed to set environment variables: {e}") from e
 
         # certificate

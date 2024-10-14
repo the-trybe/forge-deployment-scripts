@@ -61,7 +61,9 @@ sites:
       | # [Optional] deployment commands to execute during deployment (if not included forge default will be used).
       composer install --no-interaction --prefer-dist --optimize-autoloader
       php artisan migrate --force
-    environment: | # [Optional] Environment variables specific to this site.
+    env_file: ".env" # [Optional] The environment file to use (default: ".env").
+    environment:
+      | # [Optional] Environment variables, if both env_file and environment are provided, both will be used (environment will have precedence).
       APP_ENV="production"
       DB_CONNECTION="mysql"
       DB_HOST="127.0.0.1"
