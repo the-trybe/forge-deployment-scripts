@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 from pathlib import Path
 
@@ -7,6 +8,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 from utils import cat_paths, parse_env
 
 load_dotenv(".env.test")
@@ -94,7 +96,7 @@ def validate_site_configuration(server_id, site_config):
         headers=headers,
     )
     response.raise_for_status()
-    deployment_script = response.json()["content"]
+    deployment_script = response.content.decode("utf-8")
     expected_commands = site_config.get("deployment_commands", "")
     assert (
         expected_commands in deployment_script
@@ -121,7 +123,7 @@ def validate_site_configuration(server_id, site_config):
 
 def run_deployment_script():
     subprocess.run(
-        ["python", "main.py"],
+        [sys.executable, "src/deploy.py"],
         check=True,
         env={  # type: ignore
             "GITHUB_WORKSPACE": WORKFLOW_REPO_PATH,

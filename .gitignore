@@ -3,3 +3,5 @@
 venv
 forge-deploy.yml
 __pycache__
+.pytest_cache
+.vscode
