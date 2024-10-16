@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    script_dir = os.path.dirname(__file__)
+    action_dir = cat_paths(os.path.dirname(__file__), "../")
     forge_uri = "https://forge.laravel.com/api/v1"
     if FORGE_API_TOKEN is None:
         raise Exception("FORGE_API_TOKEN is not set")
@@ -162,7 +162,7 @@ def main():
             )
 
             # if template isn't added in the server add it from nginx-templates folder
-            nginx_templates_dir = cat_paths(script_dir, "nginx_templates/")
+            nginx_templates_dir = cat_paths(action_dir, "nginx_templates/")
             if not nginx_template_id:
                 logger.info("Nginx template not created in the server")
                 logger.info("Creating nginx template...")

@@ -33,7 +33,7 @@ runs:
       continue-on-error: false
 
     - name: Deploy to Laravel Forge
-      run: python3 ${{ github.action_path }}/deploy.py
+      run: python3 ${{ github.action_path }}/src/deploy.py
       shell: bash
       env:
         FORGE_API_TOKEN: ${{ inputs.forge_api_token }}
