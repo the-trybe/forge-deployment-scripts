@@ -424,7 +424,7 @@ def main():
                     new_daemon = response.json()["daemon"]
                     daemon_ids.append(new_daemon["id"])
                     logger.info(
-                        f"Daemon-{new_daemon["id"]} `{new_daemon["command"]} created."
+                        f"Daemon-{new_daemon["id"]} `{new_daemon["command"]}` created."
                     )
         except Exception as e:
             raise Exception(f"Failed to add daemons: {e}") from e
