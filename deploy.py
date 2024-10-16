@@ -39,7 +39,7 @@ def main():
         raise Exception("FORGE_API_TOKEN is not set")
 
     dep_file = cat_paths(
-        script_dir, WORKFLOW_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+        WORKFLOW_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
     )
 
     try:
@@ -460,9 +460,7 @@ def main():
             site_env = {}
             # read env file
             if site_conf["env_file"]:
-                env_file_path = cat_paths(
-                    script_dir, WORKFLOW_REPO_PATH, site_conf["env_file"]
-                )
+                env_file_path = cat_paths(WORKFLOW_REPO_PATH, site_conf["env_file"])
                 try:
                     with open(env_file_path, "r") as file:
                         logger.info(
