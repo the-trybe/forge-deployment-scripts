@@ -28,7 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Path to the code repository content (repo that uses the action)
-CODE_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
+WORKFLOW_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
 
 
 def main():
@@ -39,7 +39,7 @@ def main():
         raise Exception("FORGE_API_TOKEN is not set")
 
     dep_file = cat_paths(
-        script_dir, CODE_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+        script_dir, WORKFLOW_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
     )
 
     try:
@@ -461,7 +461,7 @@ def main():
             # read env file
             if site_conf["env_file"]:
                 env_file_path = cat_paths(
-                    script_dir, CODE_REPO_PATH, site_conf["env_file"]
+                    script_dir, WORKFLOW_REPO_PATH, site_conf["env_file"]
                 )
                 try:
                     with open(env_file_path, "r") as file:
