@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from utils import (
     cat_paths,
+    load_config,
     parse_env,
     replace_nginx_variables,
     replace_secrets_yaml,
@@ -19,6 +20,10 @@ from utils import (
 load_dotenv()
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+WORKFLOW_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
+DEPLOYMENT_FILE_NAME = os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+FORGE_API_TOKEN = os.getenv("FORGE_API_TOKEN")
+SECRETS_ENV = os.getenv("SECRETS", None)
 
 logging.basicConfig(
     level=logging.INFO if not DEBUG else logging.DEBUG,
@@ -27,20 +32,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Path to the code repository content (repo that uses the action)
-WORKFLOW_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
-
 
 def main():
-    script_dir = os.path.dirname(__file__)
+    action_dir = cat_paths(os.path.dirname(__file__), "../")
     forge_uri = "https://forge.laravel.com/api/v1"
-    forge_api_token = os.getenv("FORGE_API_TOKEN")
-    if forge_api_token is None:
+    if FORGE_API_TOKEN is None:
         raise Exception("FORGE_API_TOKEN is not set")
 
-    dep_file = cat_paths(
-        WORKFLOW_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
-    )
+    dep_file = cat_paths(WORKFLOW_REPO_PATH, DEPLOYMENT_FILE_NAME)
 
     try:
         with open(dep_file, "r") as file:
@@ -51,9 +50,8 @@ def main():
         raise Exception(f"Error parsing YAML file: {e}") from e
 
     # replace secrets
-    secrets_env = os.getenv("SECRETS", None)
-    if secrets_env:
-        secrets = parse_env(secrets_env)
+    if SECRETS_ENV:
+        secrets = parse_env(SECRETS_ENV)
 
         try:
             data: dict = replace_secrets_yaml(data, secrets)  # type: ignore
@@ -64,45 +62,14 @@ def main():
 
     validate_yaml_data(data)
 
-    config = {
-        "server_name": data["server_name"],
-        "github_repository": data["github_repository"],
-        "github_branch": data.get("github_branch", "main"),
-        "sites": [],
-    }
-    for site in data.get("sites", []):
-        root_dir = site.get("root_dir", ".")
-        if root_dir.startswith("/"):
-            root_dir = "." + root_dir
-        web_dir = site.get("web_dir", "public")
-        if web_dir.startswith("/"):
-            web_dir = "." + web_dir
-
-        config["sites"].append(
-            {
-                "site_domain": site["site_domain"],
-                "root_dir": root_dir,
-                "web_dir": web_dir,
-                "project_type": site.get("project_type", "html"),
-                "php_version": site.get("php_version", None),
-                "deployment_commands": site.get("deployment_commands", None),
-                "daemons": site.get("daemons", []),
-                "environment": site.get("environment", None),
-                "env_file": site.get("env_file", None),
-                "aliases": site.get("aliases", []),
-                "nginx_template": site.get("nginx_template", "default"),
-                "nginx_config_variables": site.get("nginx_config_variables", {}),
-                "certificate": site.get("certificate", False),
-                "clone_repository": site.get("clone_repository", True),
-            }
-        )
+    config = load_config(data)
 
     logger.debug("Config: %s", config)
 
     session = requests.sessions.Session()
     session.headers.update(
         {
-            "Authorization": f"Bearer {forge_api_token}",
+            "Authorization": f"Bearer {FORGE_API_TOKEN}",
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
@@ -165,7 +132,7 @@ def main():
             )
 
             # if template isn't added in the server add it from nginx-templates folder
-            nginx_templates_dir = cat_paths(script_dir, "nginx_templates/")
+            nginx_templates_dir = cat_paths(action_dir, "nginx_templates/")
             if not nginx_template_id:
                 logger.info("Nginx template not created in the server")
                 logger.info("Creating nginx template...")

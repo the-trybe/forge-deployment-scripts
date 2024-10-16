@@ -65,7 +65,9 @@ def wait(callback, max_retries=8):
     return False
 
 
-def parse_env(env: str) -> dict:
+def parse_env(env: str | None) -> dict:
+    if not env:
+        return {}
     parsed_env = {}
     for line in env.strip().split("\n"):
         if line:
@@ -81,3 +83,39 @@ def parse_env(env: str) -> dict:
 
 def cat_paths(*paths):
     return str(Path(*paths))
+
+
+def load_config(yaml_data):
+    config = {
+        "server_name": yaml_data["server_name"],
+        "github_repository": yaml_data["github_repository"],
+        "github_branch": yaml_data.get("github_branch", "main"),
+        "sites": [],
+    }
+    for site in yaml_data.get("sites", []):
+        root_dir = site.get("root_dir", ".")
+        if root_dir.startswith("/"):
+            root_dir = "." + root_dir
+        web_dir = site.get("web_dir", "public")
+        if web_dir.startswith("/"):
+            web_dir = "." + web_dir
+
+        config["sites"].append(
+            {
+                "site_domain": site["site_domain"],
+                "root_dir": root_dir,
+                "web_dir": web_dir,
+                "project_type": site.get("project_type", "html"),
+                "php_version": site.get("php_version", None),
+                "deployment_commands": site.get("deployment_commands", None),
+                "daemons": site.get("daemons", []),
+                "environment": site.get("environment", None),
+                "env_file": site.get("env_file", None),
+                "aliases": site.get("aliases", []),
+                "nginx_template": site.get("nginx_template", "default"),
+                "nginx_config_variables": site.get("nginx_config_variables", {}),
+                "certificate": site.get("certificate", False),
+                "clone_repository": site.get("clone_repository", True),
+            }
+        )
+    return config
