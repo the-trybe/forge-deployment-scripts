@@ -19,6 +19,10 @@ from utils import (
 load_dotenv()
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+WORKFLOW_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
+DEPLOYMENT_FILE_NAME = os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+FORGE_API_TOKEN = os.getenv("FORGE_API_TOKEN")
+SECRETS_ENV = os.getenv("SECRETS", None)
 
 logging.basicConfig(
     level=logging.INFO if not DEBUG else logging.DEBUG,
@@ -27,20 +31,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Path to the code repository content (repo that uses the action)
-WORKFLOW_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
-
 
 def main():
     script_dir = os.path.dirname(__file__)
     forge_uri = "https://forge.laravel.com/api/v1"
-    forge_api_token = os.getenv("FORGE_API_TOKEN")
-    if forge_api_token is None:
+    if FORGE_API_TOKEN is None:
         raise Exception("FORGE_API_TOKEN is not set")
 
-    dep_file = cat_paths(
-        WORKFLOW_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
-    )
+    dep_file = cat_paths(WORKFLOW_REPO_PATH, DEPLOYMENT_FILE_NAME)
 
     try:
         with open(dep_file, "r") as file:
@@ -51,9 +49,8 @@ def main():
         raise Exception(f"Error parsing YAML file: {e}") from e
 
     # replace secrets
-    secrets_env = os.getenv("SECRETS", None)
-    if secrets_env:
-        secrets = parse_env(secrets_env)
+    if SECRETS_ENV:
+        secrets = parse_env(SECRETS_ENV)
 
         try:
             data: dict = replace_secrets_yaml(data, secrets)  # type: ignore
@@ -102,7 +99,7 @@ def main():
     session = requests.sessions.Session()
     session.headers.update(
         {
-            "Authorization": f"Bearer {forge_api_token}",
+            "Authorization": f"Bearer {FORGE_API_TOKEN}",
             "Accept": "application/json",
             "Content-Type": "application/json",
         }

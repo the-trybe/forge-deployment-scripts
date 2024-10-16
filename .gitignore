@@ -1,4 +1,5 @@
 .env
+.env.test
 venv
 forge-deploy.yml
 __pycache__
