@@ -69,7 +69,7 @@ sites:
       DB_HOST="127.0.0.1"
       DB_PORT=3306
       DB_DATABASE="mywebsite_db"
-      DB_USERNAME=${{secrets.DB_USER}}
+      DB_USERNAME=${{secrets.DB_USER}} # replacing secrets only works in the yaml file and not in external env files.
       DB_PASSWORD=${{secrets.DB_PASSWORD}}
     aliases: # [Optional] Additional domain aliases.
       - "www.mywebsite.com"

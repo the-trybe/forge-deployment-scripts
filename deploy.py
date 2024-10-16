@@ -28,18 +28,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Path to the code repository content (repo that uses the action)
-# "../" because the action code is in a sub directory (check action.yml)
-CODE_REPO_PATH = "../"
+CODE_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
 
 
 def main():
+    script_dir = os.path.dirname(__file__)
     forge_uri = "https://forge.laravel.com/api/v1"
     forge_api_token = os.getenv("FORGE_API_TOKEN")
     if forge_api_token is None:
         raise Exception("FORGE_API_TOKEN is not set")
 
     dep_file = cat_paths(
-        CODE_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+        script_dir, CODE_REPO_PATH, os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
     )
 
     try:
@@ -165,14 +165,20 @@ def main():
             )
 
             # if template isn't added in the server add it from nginx-templates folder
+            nginx_templates_dir = cat_paths(script_dir, "nginx_templates/")
             if not nginx_template_id:
                 logger.info("Nginx template not created in the server")
                 logger.info("Creating nginx template...")
                 if os.path.exists(
-                    f"nginx_templates/{site_conf["nginx_template"]}.conf"
+                    cat_paths(
+                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                    )
                 ):
                     with open(
-                        f"nginx_templates/{site_conf['nginx_template']}.conf", "r"
+                        cat_paths(
+                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                        ),
+                        "r",
                     ) as file:
                         try:
                             response = session.post(
@@ -198,23 +204,31 @@ def main():
                 )
                 response.raise_for_status()
                 server_template = response.json()["template"]["content"]
-                with open(
-                    f"nginx_templates/{site_conf['nginx_template']}.conf", "r"
-                ) as file:
-                    local_template = file.read()
+                if os.path.exists(
+                    cat_paths(
+                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                    )
+                ):
+                    with open(
+                        cat_paths(
+                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                        ),
+                        "r",
+                    ) as file:
+                        local_template = file.read()
 
-                if server_template != local_template:
-                    try:
-                        response = session.put(
-                            f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}",
-                            json={"content": local_template},
-                        )
-                        response.raise_for_status()
-                        logger.info("Nginx template updated successfully")
-                    except requests.RequestException as e:
-                        raise Exception(
-                            "Failed to update nginx template from Laravel Forge API"
-                        ) from e
+                    if server_template != local_template:
+                        try:
+                            response = session.put(
+                                f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}",
+                                json={"content": local_template},
+                            )
+                            response.raise_for_status()
+                            logger.info("Nginx template updated successfully")
+                        except requests.RequestException as e:
+                            raise Exception(
+                                "Failed to update nginx template from Laravel Forge API"
+                            ) from e
 
             create_site_payload = {
                 "domain": site_conf["site_domain"],
@@ -446,7 +460,9 @@ def main():
             site_env = {}
             # read env file
             if site_conf["env_file"]:
-                env_file_path = cat_paths(CODE_REPO_PATH, site_conf["env_file"])
+                env_file_path = cat_paths(
+                    script_dir, CODE_REPO_PATH, site_conf["env_file"]
+                )
                 try:
                     with open(env_file_path, "r") as file:
                         logger.info(
