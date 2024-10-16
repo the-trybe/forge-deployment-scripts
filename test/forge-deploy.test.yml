@@ -17,3 +17,8 @@ sites:
     certificate: true
     daemons:
       - command: "node index.js"
+
+  - site_domain: "socketi.devops.salah-oukil.me"
+    clone_repository: false
+    daemons:
+      - command: "watch -n 10 date"
