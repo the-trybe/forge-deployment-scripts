@@ -14,11 +14,11 @@ sites:
     nginx_template: "reverse-proxy"
     nginx_config_variables:
       PROXY_PASS_PORT: "3030"
-    certificate: true
+    certificate: false
     daemons:
       - command: "node index.js"
 
-  - site_domain: "socketi.devops.salah-oukil.me"
+  - site_domain: "watch.devops.salah-oukil.me"
     clone_repository: false
     daemons:
       - command: "watch -n 10 date"

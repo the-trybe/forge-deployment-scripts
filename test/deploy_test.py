@@ -9,7 +9,7 @@ import yaml
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-from utils import cat_paths, parse_env
+from utils import cat_paths, load_config, parse_env
 
 load_dotenv(".env.test")
 
@@ -45,7 +45,8 @@ def get_server_id():
 def load_deployment_config():
     dep_file = cat_paths(WORKFLOW_REPO_PATH, DEPLOYMENT_FILE)
     with open(dep_file, "r") as file:
-        return yaml.safe_load(file)
+        yaml_data = yaml.safe_load(file)
+        return load_config(yaml_data)
 
 
 def get_site(server_id, domain):
@@ -91,16 +92,17 @@ def validate_site_configuration(server_id, site_config):
     ), f"Environment variable mismatch for site {site_config['site_domain']}."
 
     # Validate deployment script
-    response = requests.get(
-        f"{FORGE_API_URL}/servers/{server_id}/sites/{site['id']}/deployment/script",
-        headers=headers,
-    )
-    response.raise_for_status()
-    deployment_script = response.content.decode("utf-8")
-    expected_commands = site_config.get("deployment_commands", "")
-    assert (
-        expected_commands in deployment_script
-    ), f"Deployment script for site '{site_config['site_domain']}' does not match expected commands."
+    if site_config.get("deployment_commands"):
+        response = requests.get(
+            f"{FORGE_API_URL}/servers/{server_id}/sites/{site['id']}/deployment/script",
+            headers=headers,
+        )
+        response.raise_for_status()
+        deployment_script = response.content.decode("utf-8")
+        expected_commands = site_config.get("deployment_commands")
+        assert (
+            expected_commands in deployment_script
+        ), f"Deployment script for site '{site_config['site_domain']}' does not match expected commands."
 
     # Validate daemons
     response = requests.get(
@@ -125,7 +127,9 @@ def validate_site_configuration(server_id, site_config):
         assert site["is_secured"]
 
     # curl site to check if it is up
-    response = requests.get(f"https://{site_config['site_domain']}")
+    response = requests.get(
+        f"{"https" if site["is_secured"] else "http"}://{site_config['site_domain']}"
+    )
     assert response.status_code == 200, f"Site '{site_config['site_domain']}' is down"
 
 
@@ -192,9 +196,8 @@ def test_deployment(server_id, deployment_config):
         for site_config in deployment_config.get("sites", []):
             validate_site_configuration(server_id, site_config)
     finally:
-        pass
-    #     # Cleanup after test
-    #     cleanup_sites_and_daemons(server_id, deployment_config)
+        # pass
+        cleanup_sites_and_daemons(server_id, deployment_config)
 
 
 if __name__ == "__main__":

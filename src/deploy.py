@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from utils import (
     cat_paths,
+    load_config,
     parse_env,
     replace_nginx_variables,
     replace_secrets_yaml,
@@ -61,38 +62,7 @@ def main():
 
     validate_yaml_data(data)
 
-    config = {
-        "server_name": data["server_name"],
-        "github_repository": data["github_repository"],
-        "github_branch": data.get("github_branch", "main"),
-        "sites": [],
-    }
-    for site in data.get("sites", []):
-        root_dir = site.get("root_dir", ".")
-        if root_dir.startswith("/"):
-            root_dir = "." + root_dir
-        web_dir = site.get("web_dir", "public")
-        if web_dir.startswith("/"):
-            web_dir = "." + web_dir
-
-        config["sites"].append(
-            {
-                "site_domain": site["site_domain"],
-                "root_dir": root_dir,
-                "web_dir": web_dir,
-                "project_type": site.get("project_type", "html"),
-                "php_version": site.get("php_version", None),
-                "deployment_commands": site.get("deployment_commands", None),
-                "daemons": site.get("daemons", []),
-                "environment": site.get("environment", None),
-                "env_file": site.get("env_file", None),
-                "aliases": site.get("aliases", []),
-                "nginx_template": site.get("nginx_template", "default"),
-                "nginx_config_variables": site.get("nginx_config_variables", {}),
-                "certificate": site.get("certificate", False),
-                "clone_repository": site.get("clone_repository", True),
-            }
-        )
+    config = load_config(data)
 
     logger.debug("Config: %s", config)
 
