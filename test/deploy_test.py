@@ -1,6 +1,6 @@
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -8,7 +8,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 from utils import cat_paths, parse_env
 
 load_dotenv(".env.test")
@@ -120,6 +120,14 @@ def validate_site_configuration(server_id, site_config):
             daemon["command"] in configured_daemons
         ), f"Daemon '{daemon['command']}' is missing or not properly configured for site '{site_config['site_domain']}'."
 
+    # Validate SSL certificate
+    if site_config.get("certificate"):
+        assert site["is_secured"]
+
+    # curl site to check if it is up
+    response = requests.get(f"https://{site_config['site_domain']}")
+    assert response.status_code == 200, f"Site '{site_config['site_domain']}' is down"
+
 
 def run_deployment_script():
     subprocess.run(
@@ -133,6 +141,38 @@ def run_deployment_script():
     )
 
 
+def cleanup_sites_and_daemons(server_id, deployment_config):
+    for site_config in deployment_config.get("sites", []):
+        site = get_site(server_id, site_config["site_domain"])
+        if site:
+            site_id = site["id"]
+
+            # Delete daemons
+            response = requests.get(
+                f"{FORGE_API_URL}/servers/{server_id}/daemons", headers=headers
+            )
+            response.raise_for_status()
+            daemons = response.json()["daemons"]
+            site_dir = cat_paths(
+                "/home/forge/", site_config["site_domain"], site_config["root_dir"]
+            )
+            site_daemons = [
+                daemon for daemon in daemons if daemon["directory"] == site_dir
+            ]
+            for daemon in site_daemons:
+                response = requests.delete(
+                    f"{FORGE_API_URL}/servers/{server_id}/daemons/{daemon['id']}",
+                    headers=headers,
+                )
+                response.raise_for_status()
+
+            # Delete site
+            response = requests.delete(
+                f"{FORGE_API_URL}/servers/{server_id}/sites/{site_id}", headers=headers
+            )
+            response.raise_for_status()
+
+
 @pytest.fixture(scope="module")
 def server_id():
     return get_server_id()
@@ -144,12 +184,17 @@ def deployment_config():
 
 
 def test_deployment(server_id, deployment_config):
-    # Run the deployment script
-    run_deployment_script()
+    try:
+        # Run the deployment script
+        run_deployment_script()
 
-    # Validate the deployment
-    for site_config in deployment_config.get("sites", []):
-        validate_site_configuration(server_id, site_config)
+        # Validate the deployment
+        for site_config in deployment_config.get("sites", []):
+            validate_site_configuration(server_id, site_config)
+    finally:
+        pass
+    #     # Cleanup after test
+    #     cleanup_sites_and_daemons(server_id, deployment_config)
 
 
 if __name__ == "__main__":
