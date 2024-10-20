@@ -110,7 +110,7 @@ def load_config(yaml_data):
                 "deployment_commands": site.get("deployment_commands", None),
                 "daemons": site.get("daemons", []),
                 "environment": site.get("environment", None),
-                "env_file": site.get("env_file", None),
+                "env_file": ensure_relative_path(site.get("env_file", None)),
                 "aliases": site.get("aliases", []),
                 "nginx_template": site.get("nginx_template", "default"),
                 "nginx_config_variables": site.get("nginx_config_variables", {}),
