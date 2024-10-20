@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import sys
@@ -8,6 +9,9 @@ import yaml
 from dotenv import load_dotenv
 
 from utils import (
+    cat_paths,
+    load_config,
+    parse_env,
     replace_nginx_variables,
     replace_secrets_yaml,
     validate_yaml_data,
@@ -17,6 +21,10 @@ from utils import (
 load_dotenv()
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+WORKFLOW_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
+DEPLOYMENT_FILE_NAME = os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+FORGE_API_TOKEN = os.getenv("FORGE_API_TOKEN")
+SECRETS_ENV = os.getenv("SECRETS", None)
 
 logging.basicConfig(
     level=logging.INFO if not DEBUG else logging.DEBUG,
@@ -27,77 +35,45 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    action_dir = cat_paths(os.path.dirname(__file__), "../")
     forge_uri = "https://forge.laravel.com/api/v1"
-    forge_api_token = os.getenv("FORGE_API_TOKEN")
-    if forge_api_token is None:
+    if FORGE_API_TOKEN is None:
         raise Exception("FORGE_API_TOKEN is not set")
 
-    dep_file = os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
+    dep_file = cat_paths(WORKFLOW_REPO_PATH, DEPLOYMENT_FILE_NAME)
 
     try:
         with open(dep_file, "r") as file:
             data = yaml.safe_load(file)
+            logger.debug("YAML data: %s", data)
     except FileNotFoundError as e:
         raise Exception(f"The configuration file {dep_file} is missing.") from e
     except yaml.YAMLError as e:
         raise Exception(f"Error parsing YAML file: {e}") from e
 
     # replace secrets
-    secrets_env = os.getenv("SECRETS")
-    if secrets_env:
-        secrets = dict(
-            line.split("=", 1) for line in secrets_env.strip().split("\n") if line
-        )
-        # convert keys to upper case
-        secrets = {key.upper(): value for key, value in secrets.items()}
+    if SECRETS_ENV:
+        secrets = parse_env(SECRETS_ENV)
 
         try:
             data: dict = replace_secrets_yaml(data, secrets)  # type: ignore
         except Exception as e:
             raise Exception(f"Error replacing secrets: {e}") from e
 
-    logger.debug("YAML data: %s", data)
-
     validate_yaml_data(data)
 
-    config = {
-        "server_name": data["server_name"],
-        "github_repository": data["github_repository"],
-        "github_branch": data.get("github_branch", "main"),
-        "sites": [],
-    }
-    for site in data.get("sites", []):
-        root_dir = site.get("root_dir", ".")
-        if root_dir.startswith("/"):
-            root_dir = "." + root_dir
-        web_dir = site.get("web_dir", "public")
-        if web_dir.startswith("/"):
-            web_dir = "." + web_dir
+    config = load_config(data)
 
-        config["sites"].append(
-            {
-                "site_domain": site["site_domain"],
-                "root_dir": root_dir,
-                "web_dir": web_dir,
-                "project_type": site.get("project_type", "html"),
-                "php_version": site.get("php_version", None),
-                "deployment_commands": site.get("deployment_commands", None),
-                "daemons": site.get("daemons", []),
-                "environment": site.get("environment", None),
-                "aliases": site.get("aliases", []),
-                "nginx_template": site.get("nginx_template", "default"),
-                "nginx_config_variables": site.get("nginx_config_variables", {}),
-                "certificate": site.get("certificate", False),
-                "clone_repository": site.get("clone_repository", True),
-            }
-        )
-
-    logger.debug("Config: %s", config)
+    # hide env to log config safely
+    log_config = copy.deepcopy(config)
+    for site in log_config["sites"]:
+        site["environment"] = "*****"
+    logger.debug("Config: %s", log_config)
 
     session = requests.sessions.Session()
     session.headers.update(
         {
-            "Authorization": f"Bearer {forge_api_token}",
+            "Authorization": f"Bearer {FORGE_API_TOKEN}",
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
@@ -160,14 +136,20 @@ def main():
             )
 
             # if template isn't added in the server add it from nginx-templates folder
+            nginx_templates_dir = cat_paths(action_dir, "nginx_templates/")
             if not nginx_template_id:
                 logger.info("Nginx template not created in the server")
                 logger.info("Creating nginx template...")
                 if os.path.exists(
-                    f"nginx_templates/{site_conf["nginx_template"]}.conf"
+                    cat_paths(
+                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                    )
                 ):
                     with open(
-                        f"nginx_templates/{site_conf['nginx_template']}.conf", "r"
+                        cat_paths(
+                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                        ),
+                        "r",
                     ) as file:
                         try:
                             response = session.post(
@@ -193,23 +175,31 @@ def main():
                 )
                 response.raise_for_status()
                 server_template = response.json()["template"]["content"]
-                with open(
-                    f"nginx_templates/{site_conf['nginx_template']}.conf", "r"
-                ) as file:
-                    local_template = file.read()
+                if os.path.exists(
+                    cat_paths(
+                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                    )
+                ):
+                    with open(
+                        cat_paths(
+                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
+                        ),
+                        "r",
+                    ) as file:
+                        local_template = file.read()
 
-                if server_template != local_template:
-                    try:
-                        response = session.put(
-                            f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}",
-                            json={"content": local_template},
-                        )
-                        response.raise_for_status()
-                        logger.info("Nginx template updated successfully")
-                    except requests.RequestException as e:
-                        raise Exception(
-                            "Failed to update nginx template from Laravel Forge API"
-                        ) from e
+                    if server_template != local_template:
+                        try:
+                            response = session.put(
+                                f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}",
+                                json={"content": local_template},
+                            )
+                            response.raise_for_status()
+                            logger.info("Nginx template updated successfully")
+                        except requests.RequestException as e:
+                            raise Exception(
+                                "Failed to update nginx template from Laravel Forge API"
+                            ) from e
 
             create_site_payload = {
                 "domain": site_conf["site_domain"],
@@ -385,6 +375,7 @@ def main():
                         f"{forge_uri}/servers/{server_id}/daemons/{dm['id']}"
                     )
                     response.raise_for_status()
+                    logger.info(f"Daemon-{dm["id"]} `{dm["command"]}` deleted.")
                 else:
                     daemon_ids.append(dm["id"])
 
@@ -401,11 +392,13 @@ def main():
                         },
                     )
                     response.raise_for_status()
-                    daemon_ids.append(response.json()["daemon"]["id"])
+                    new_daemon = response.json()["daemon"]
+                    daemon_ids.append(new_daemon["id"])
+                    logger.info(
+                        f"Daemon-{new_daemon["id"]} `{new_daemon["command"]}` created."
+                    )
         except Exception as e:
             raise Exception(f"Failed to add daemons: {e}") from e
-
-        logger.info("Daemons added successfully")
 
         # deployment script
         # if deployment_script not provided, the default deployment script generated by forge is kept
@@ -438,17 +431,40 @@ def main():
 
         # set env
         try:
+            site_env = {}
+            # read env file
+            if site_conf["env_file"]:
+                env_file_path = cat_paths(WORKFLOW_REPO_PATH, site_conf["env_file"])
+                try:
+                    with open(env_file_path, "r") as file:
+                        logger.info(
+                            "Loading environment variables from file `%s`",
+                            site_conf["env_file"],
+                        )
+                        file_env = parse_env(file.read())
+                        logger.debug("Env variables loaded from file:\n%s", file_env)
+                        site_env.update(file_env)
+                except FileNotFoundError as e:
+                    raise Exception(
+                        f"Environment file `{site_conf['env_file']}` not found"
+                    ) from e
+
             if site_conf["environment"]:
+                config_env = parse_env(site_conf["environment"])
+                site_env.update(config_env)
+
+            env_str = "\n".join([f"{k}={v}" for k, v in site_env.items()])
+            if len(env_str) > 0:
                 response = session.put(
                     f"{forge_uri}/servers/{server_id}/sites/{site_id}/env",
                     json={
-                        "content": site_conf["environment"],
+                        "content": env_str,
                     },
                 )
                 response.raise_for_status()
                 logger.info("Environment variables set successfully")
 
-        except requests.RequestException as e:
+        except Exception as e:
             raise Exception(f"Failed to set environment variables: {e}") from e
 
         # certificate

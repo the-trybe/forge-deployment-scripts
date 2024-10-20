@@ -35,7 +35,8 @@ jobs:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
           deployment_file: forge-deploy.yml # [Optional] The deployment configuration file (default: forge-deploy.yml).
           debug: false # [Optional] Enable debug mode in logs (default: false).
-          secrets: |
+          secrets:
+            | # [Optional] Secrets to replace in the forge-deploy.yml file. EX:
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_USER=${{ secrets.DB_USER }}
 ```
@@ -61,13 +62,15 @@ sites:
       | # [Optional] deployment commands to execute during deployment (if not included forge default will be used).
       composer install --no-interaction --prefer-dist --optimize-autoloader
       php artisan migrate --force
-    environment: | # [Optional] Environment variables specific to this site.
+    env_file: ".env" # [Optional] The environment file to use.
+    environment:
+      | # [Optional] Environment variables, if both env_file and environment are provided, both will be used (environment will have precedence).
       APP_ENV="production"
       DB_CONNECTION="mysql"
       DB_HOST="127.0.0.1"
       DB_PORT=3306
       DB_DATABASE="mywebsite_db"
-      DB_USERNAME=${{secrets.DB_USER}}
+      DB_USERNAME=${{secrets.DB_USER}} # replacing secrets only works in the yaml file and not in external env files.
       DB_PASSWORD=${{secrets.DB_PASSWORD}}
     aliases: # [Optional] Additional domain aliases.
       - "www.mywebsite.com"
@@ -137,3 +140,40 @@ Additional Configuration Options and Customization:
 9. You can add multiple sites in the `sites` array, each with its own configuration. Each site will be configured separately on the Laravel Forge server.
 
 10. You can add secrets to the `forge-deploy.yml` file in the form `${{ secrets.SECRET_VAR }}`. These secrets will be replaced by the values provided in the `secrets` input of the GitHub Action.
+
+## Additional Examples
+
+### Load secrets using One Password
+
+```yaml
+name: Deploy to Laravel Forge
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Load secret
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          DB_USER: op://vault-name/db/user
+          DB_PASSWORD: op://vault-name/db/password
+
+      - name: Deploy to Laravel Forge
+        uses: the-trybe/forge-deployment-scripts@main
+        with:
+          forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
+          # in secrets use 'env.' instead of 'secrets.'
+          secrets: |
+            DB_USER=${{ env.DB_USER }}
+            DB_PASSWORD=${{ env.DB_PASSWORD }}
+```
