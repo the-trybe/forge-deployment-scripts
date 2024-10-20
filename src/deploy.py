@@ -241,7 +241,7 @@ def main():
             try:
                 nginx_config = forge_api.get_nginx_config(server_id, site["id"])
                 nginx_config = replace_nginx_variables(
-                    nginx_config, site_conf["nginx_config_variables"]
+                    nginx_config, site_conf["nginx_template_variables"]
                 )
                 forge_api.set_nginx_config(server_id, site["id"], nginx_config)
             except Exception as e:

@@ -113,7 +113,7 @@ def load_config(yaml_data):
                 "env_file": ensure_relative_path(site.get("env_file", None)),
                 "aliases": site.get("aliases", []),
                 "nginx_template": site.get("nginx_template", "default"),
-                "nginx_config_variables": site.get("nginx_config_variables", {}),
+                "nginx_template_variables": site.get("nginx_template_variables", {}),
                 "nginx_custom_config": ensure_relative_path(
                     site.get("nginx_custom_config")
                 ),

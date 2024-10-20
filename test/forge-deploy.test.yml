@@ -12,7 +12,7 @@ sites:
       DB_USERNAME=test-db
       DB_PASSWORD=test-psswd
     nginx_template: "reverse-proxy"
-    nginx_config_variables:
+    nginx_template_variables:
       PROXY_PASS_PORT: "3030"
     certificate: true
     daemons:

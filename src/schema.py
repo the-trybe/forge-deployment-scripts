@@ -33,7 +33,7 @@ schema = {
                     "required": False,
                     "default": "default",
                 },
-                "nginx_config_variables": {
+                "nginx_template_variables": {
                     "type": "dict",
                     "required": False,
                     "default": {},
