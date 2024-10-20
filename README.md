@@ -77,6 +77,7 @@ sites:
     nginx_template: "default" # [Optional] Nginx template to use from `nignx_templates` folder (default: "default").
     nginx_config_variables: # [Optional] Variables to replace in the Nginx template.
       PROXY_PASS_PORT: 8080
+    nginx_custom_config: "path/to/nginx.conf" # [Optional] Custom Nginx config file relative to the repository root.
     certificate: true # [Optional] Boolean to enable or disable SSL certificate for this domain (default: false).
     clone_repository: true # [Optional] Boolean to clone the repository (default: true).
     daemons: # [Optional] List of daemons or processes to run in the background.

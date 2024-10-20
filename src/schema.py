@@ -38,6 +38,10 @@ schema = {
                     "required": False,
                     "default": {},
                 },
+                "nginx_custom_config": {
+                    "type": "string",
+                    "required": False,
+                },
                 "certificate": {
                     "type": "boolean",
                     "required": False,
