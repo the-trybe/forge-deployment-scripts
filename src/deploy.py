@@ -8,6 +8,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
+from forge_api import ForgeApi
 from utils import (
     cat_paths,
     load_config,
@@ -78,6 +79,8 @@ def main():
             "Content-Type": "application/json",
         }
     )
+
+    forge_api = ForgeApi(session)
 
     try:
         response = session.get(f"{forge_uri}/servers")
@@ -236,25 +239,11 @@ def main():
 
             # set site nginx variables
             try:
-                response = session.get(
-                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx"
-                )
-                response.raise_for_status()
-            except requests.RequestException as e:
-                raise Exception(
-                    "Failed to get nginx config from Laravel Forge API"
-                ) from e
-
-            try:
-                nginx_config = response.content.decode("utf-8")
+                nginx_config = forge_api.get_nginx_config(server_id, site["id"])
                 nginx_config = replace_nginx_variables(
-                    nginx_config, site_conf["nginx_config_variables"]
+                    nginx_config, site_conf["nginx_template_variables"]
                 )
-                response = session.put(
-                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}/nginx",
-                    json={"content": nginx_config},
-                )
-                response.raise_for_status()
+                forge_api.set_nginx_config(server_id, site["id"], nginx_config)
             except Exception as e:
                 raise Exception(f"Failed to set nginx config variables: {e}") from e
 
@@ -263,6 +252,33 @@ def main():
 
         site_id = site["id"]
         logger.debug(f"Site: %s", site)
+
+        # ---- nginx custom config ----
+
+        try:
+            if site_conf["nginx_custom_config"]:
+                nginx_custom_file_path = cat_paths(
+                    WORKFLOW_REPO_PATH, site_conf["nginx_custom_config"]
+                )
+                with open(nginx_custom_file_path, "r") as file:
+                    nginx_custom_content = file.read()
+
+                logger.debug(
+                    f"Nginx custom config file content:\n{nginx_custom_content}"
+                )
+                # compare existing site nginx config and the one in the file if different update
+                site_existing_nginx_config = forge_api.get_nginx_config(
+                    server_id, site_id
+                )
+                if site_existing_nginx_config != nginx_custom_content:
+                    forge_api.set_nginx_config(server_id, site_id, nginx_custom_content)
+                    logger.info(f"Nginx config updated.")
+        except FileNotFoundError as e:
+            raise Exception(
+                f"Nginx config file `{site_conf["nginx_custom_config"]} doesn't exist."
+            ) from e
+        except Exception as e:
+            raise Exception("Error when trying to set custom nginx config") from e
 
         # ---- php version ----
 

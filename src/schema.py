@@ -33,10 +33,14 @@ schema = {
                     "required": False,
                     "default": "default",
                 },
-                "nginx_config_variables": {
+                "nginx_template_variables": {
                     "type": "dict",
                     "required": False,
                     "default": {},
+                },
+                "nginx_custom_config": {
+                    "type": "string",
+                    "required": False,
                 },
                 "certificate": {
                     "type": "boolean",

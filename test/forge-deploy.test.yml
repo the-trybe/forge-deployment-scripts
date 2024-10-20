@@ -7,18 +7,19 @@ sites:
     root_dir: "test/sites/api"
     deployment_commands: |
       npm ci
-    env_file: "sites/api/.env.production"
+    env_file: "/sites/api/.env.production"
     environment: |
       DB_USERNAME=test-db
       DB_PASSWORD=test-psswd
     nginx_template: "reverse-proxy"
-    nginx_config_variables:
+    nginx_template_variables:
       PROXY_PASS_PORT: "3030"
-    certificate: false
+    certificate: true
     daemons:
       - command: "node index.js"
 
   - site_domain: "watch.devops.salah-oukil.me"
     clone_repository: false
+    nginx_custom_config: "/sites/api/nginx.conf"
     daemons:
       - command: "watch -n 10 date"

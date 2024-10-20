@@ -85,6 +85,12 @@ def cat_paths(*paths):
     return str(Path(*paths))
 
 
+def ensure_relative_path(path: str | None):
+    if path and path.startswith("/"):
+        return "." + path
+    return path
+
+
 def load_config(yaml_data):
     config = {
         "server_name": yaml_data["server_name"],
@@ -93,27 +99,24 @@ def load_config(yaml_data):
         "sites": [],
     }
     for site in yaml_data.get("sites", []):
-        root_dir = site.get("root_dir", ".")
-        if root_dir.startswith("/"):
-            root_dir = "." + root_dir
-        web_dir = site.get("web_dir", "public")
-        if web_dir.startswith("/"):
-            web_dir = "." + web_dir
 
         config["sites"].append(
             {
                 "site_domain": site["site_domain"],
-                "root_dir": root_dir,
-                "web_dir": web_dir,
+                "root_dir": ensure_relative_path(site.get("root_dir", ".")),
+                "web_dir": ensure_relative_path(site.get("web_dir", "public")),
                 "project_type": site.get("project_type", "html"),
                 "php_version": site.get("php_version", None),
                 "deployment_commands": site.get("deployment_commands", None),
                 "daemons": site.get("daemons", []),
                 "environment": site.get("environment", None),
-                "env_file": site.get("env_file", None),
+                "env_file": ensure_relative_path(site.get("env_file", None)),
                 "aliases": site.get("aliases", []),
                 "nginx_template": site.get("nginx_template", "default"),
-                "nginx_config_variables": site.get("nginx_config_variables", {}),
+                "nginx_template_variables": site.get("nginx_template_variables", {}),
+                "nginx_custom_config": ensure_relative_path(
+                    site.get("nginx_custom_config")
+                ),
                 "certificate": site.get("certificate", False),
                 "clone_repository": site.get("clone_repository", True),
             }
