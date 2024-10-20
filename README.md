@@ -35,7 +35,8 @@ jobs:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
           deployment_file: forge-deploy.yml # [Optional] The deployment configuration file (default: forge-deploy.yml).
           debug: false # [Optional] Enable debug mode in logs (default: false).
-          secrets: |
+          secrets:
+            | # [Optional] Secrets to replace in the forge-deploy.yml file. EX:
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_USER=${{ secrets.DB_USER }}
 ```

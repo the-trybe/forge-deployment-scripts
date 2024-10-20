@@ -1,6 +1,6 @@
 server_name: "devops-tst"
 github_repository: "the-trybe/forge-deployment-scripts"
-github_branch: "test"
+github_branch: "main"
 
 sites:
   - site_domain: "api.devops.salah-oukil.me"

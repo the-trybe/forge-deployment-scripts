@@ -138,6 +138,7 @@ def run_deployment_script():
         [sys.executable, "src/deploy.py"],
         check=True,
         env={  # type: ignore
+            # "DEBUG": "true",
             "GITHUB_WORKSPACE": WORKFLOW_REPO_PATH,
             "DEPLOYMENT_FILE": DEPLOYMENT_FILE,
             "FORGE_API_TOKEN": FORGE_API_TOKEN,
