@@ -140,3 +140,40 @@ Additional Configuration Options and Customization:
 9. You can add multiple sites in the `sites` array, each with its own configuration. Each site will be configured separately on the Laravel Forge server.
 
 10. You can add secrets to the `forge-deploy.yml` file in the form `${{ secrets.SECRET_VAR }}`. These secrets will be replaced by the values provided in the `secrets` input of the GitHub Action.
+
+## Additional Examples
+
+### Load secrets using One Password
+
+```yaml
+name: Deploy to Laravel Forge
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Load secret
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          DB_USER: op://vault-name/db/user
+          DB_PASSWORD: op://vault-name/db/password
+
+      - name: Deploy to Laravel Forge
+        uses: the-trybe/forge-deployment-scripts@main
+        with:
+          forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
+          # in secrets use 'env.' instead of 'secrets.'
+          secrets: |
+            DB_USER=${{ env.DB_USER }}
+            DB_PASSWORD=${{ env.DB_PASSWORD }}
+```
