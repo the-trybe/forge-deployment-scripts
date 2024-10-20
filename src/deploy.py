@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import sys
@@ -44,6 +45,7 @@ def main():
     try:
         with open(dep_file, "r") as file:
             data = yaml.safe_load(file)
+            logger.debug("YAML data: %s", data)
     except FileNotFoundError as e:
         raise Exception(f"The configuration file {dep_file} is missing.") from e
     except yaml.YAMLError as e:
@@ -58,13 +60,15 @@ def main():
         except Exception as e:
             raise Exception(f"Error replacing secrets: {e}") from e
 
-    logger.debug("YAML data: %s", data)
-
     validate_yaml_data(data)
 
     config = load_config(data)
 
-    logger.debug("Config: %s", config)
+    # hide env to log config safely
+    log_config = copy.deepcopy(config)
+    for site in log_config["sites"]:
+        site["environment"] = "*****"
+    logger.debug("Config: %s", log_config)
 
     session = requests.sessions.Session()
     session.headers.update(
@@ -447,7 +451,6 @@ def main():
 
             if site_conf["environment"]:
                 config_env = parse_env(site_conf["environment"])
-                logger.debug("Env variables loaded from config:\n%s", config_env)
                 site_env.update(config_env)
 
             env_str = "\n".join([f"{k}={v}" for k, v in site_env.items()])
