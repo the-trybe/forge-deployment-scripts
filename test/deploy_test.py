@@ -104,6 +104,23 @@ def validate_site_configuration(server_id, site_config):
             expected_commands in deployment_script
         ), f"Deployment script for site '{site_config['site_domain']}' does not match expected commands."
 
+    # Validate custom nginx config
+    if site_config.get("nginx_custom_config"):
+        response = requests.get(
+            f"{FORGE_API_URL}/servers/{server_id}/sites/{site['id']}/nginx",
+            headers=headers,
+        )
+        response.raise_for_status()
+        nginx_config = response.content.decode("utf-8")
+        expected_nginx_config = cat_paths(
+            WORKFLOW_REPO_PATH, site_config["nginx_custom_config"]
+        )
+        with open(expected_nginx_config, "r") as file:
+            expected_nginx_config = file.read()
+        assert (
+            nginx_config == expected_nginx_config
+        ), f"Custom nginx config for site '{site_config['site_domain']}' does not match expected config."
+
     # Validate daemons
     response = requests.get(
         f"{FORGE_API_URL}/servers/{server_id}/daemons", headers=headers

@@ -62,7 +62,7 @@ sites:
       | # [Optional] deployment commands to execute during deployment (if not included forge default will be used).
       composer install --no-interaction --prefer-dist --optimize-autoloader
       php artisan migrate --force
-    env_file: ".env" # [Optional] The environment file to use.
+    env_file: ".env" # [Optional] The environment file to use (relative to the root of the repository)
     environment:
       | # [Optional] Environment variables, if both env_file and environment are provided, both will be used (environment will have precedence).
       APP_ENV="production"
@@ -75,8 +75,9 @@ sites:
     aliases: # [Optional] Additional domain aliases.
       - "www.mywebsite.com"
     nginx_template: "default" # [Optional] Nginx template to use from `nignx_templates` folder (default: "default").
-    nginx_config_variables: # [Optional] Variables to replace in the Nginx template.
+    nginx_template_variables: # [Optional] Variables to replace in the Nginx template.
       PROXY_PASS_PORT: 8080
+    nginx_custom_config: "path/to/nginx.conf" # [Optional] Custom Nginx config file relative to the repository root.
     certificate: true # [Optional] Boolean to enable or disable SSL certificate for this domain (default: false).
     clone_repository: true # [Optional] Boolean to clone the repository (default: true).
     daemons: # [Optional] List of daemons or processes to run in the background.
@@ -92,7 +93,7 @@ sites:
       API_URL="https://api.myotherwebsite.com"
       FEATURE_FLAG="enabled"
     nginx_template: "custom_template" # Custom Nginx template from the nginx_templates folder.
-    nginx_config_variables:
+    nginx_template_variables:
       UPSTREAM_SERVER: "127.0.0.1"
       UPSTREAM_PORT: 8081
     certificate: false # SSL certificate disabled for this site.
@@ -112,7 +113,7 @@ sites:
       DB_USER="api_user"
       DB_PASSWORD="apipassword"
     nginx_template: "reverse-proxy"
-    nginx_config_variables:
+    nginx_template_variables:
       PROXY_PASS_PORT: 3000
     certificate: true
     daemons:
@@ -133,7 +134,7 @@ Additional Configuration Options and Customization:
 
 6. `nginx_template` field: Specify a custom Nginx template for each site (see the `nginx_templates` folder). you can add additional templates by creating a file in the `nginx_templates` folder.
 
-7. `nginx_config_variables` field: Variables to replace in the Nginx template. variables should be in the template file as `{{ VARIABLE_NAME }}`, avoid using forge [reserved variables](https://forge.laravel.com/docs/servers/nginx-templates.html#template-variables).
+7. `nginx_template_variables` field: Variables to replace in the Nginx template. variables should be in the template file as `{{ VARIABLE_NAME }}`, avoid using forge [reserved variables](https://forge.laravel.com/docs/servers/nginx-templates.html#template-variables).
 
 8. `daemons` field: List of processes to run as daemons (e.g., queue workers, Node.js servers).
 
