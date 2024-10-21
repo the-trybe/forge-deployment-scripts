@@ -4,6 +4,9 @@ github_branch: "main"
 
 sites:
   - site_domain: "api.devops.salah-oukil.me"
+    aliases:
+      - "api3.devops.salah-oukil.me"
+      - "api4.devops.salah-oukil.me"
     root_dir: "test/sites/api"
     deployment_commands: |
       npm ci
