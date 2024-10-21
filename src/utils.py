@@ -122,3 +122,12 @@ def load_config(yaml_data):
             }
         )
     return config
+
+
+def get_domains_certificate(certificates, domains) -> dict | None:
+    """Get the certificate for the given domains from the list of certificates."""
+    for cert in certificates:
+        cert_domains = cert["domain"].split(",")
+        if set(cert_domains) == set(domains):
+            return cert
+    return None

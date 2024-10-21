@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from forge_api import ForgeApi
 from utils import (
     cat_paths,
+    get_domains_certificate,
     load_config,
     parse_env,
     replace_nginx_variables,
@@ -253,6 +254,18 @@ def main():
         site_id = site["id"]
         logger.debug(f"Site: %s", site)
 
+        # ---- update aliases ----
+        try:
+            site_aliases = site["aliases"]
+            if set(site_aliases) != set(site_conf["aliases"]):
+                site = forge_api.update_site(
+                    server_id, site_id, aliases=site_conf["aliases"]
+                )
+                logger.info("Site aliases updated successfully.")
+
+        except Exception as e:
+            raise Exception("Error updating aliases.") from e
+
         # ---- nginx custom config ----
 
         try:
@@ -484,27 +497,38 @@ def main():
             raise Exception(f"Failed to set environment variables: {e}") from e
 
         # certificate
-        if site_conf["certificate"] and not site["is_secured"]:
-            try:
-                logger.info("Adding certificate...")
-                response = session.post(
-                    f"{forge_uri}/servers/{server_id}/sites/{site_id}/certificates/letsencrypt",
-                    json={"domains": [site_conf["site_domain"], *site_conf["aliases"]]},
+        try:
+            if site_conf["certificate"]:
+                site_certs = forge_api.list_certificates(server_id, site_id)
+                site_certificate = get_domains_certificate(
+                    site_certs, [site_conf["site_domain"], *site_conf["aliases"]]
                 )
-                response.raise_for_status()
+                if not site_certificate:
+                    logger.info("Installing certificate...")
+                    site_certificate = forge_api.create_certificate(
+                        server_id,
+                        site_id,
+                        [site_conf["site_domain"], *site_conf["aliases"]],
+                    )
 
-                def until_cert_applied():
-                    site = session.get(
-                        f"{forge_uri}/servers/{server_id}/sites/{site_id}"
-                    ).json()["site"]
-                    return site["is_secured"]
+                    def until_cert_installed(cert_id):
+                        site_certificate = forge_api.get_certificate_by_id(
+                            server_id, site_id, cert_id
+                        )
+                        return site_certificate["status"] == "installed"
 
-                if not wait(until_cert_applied):
-                    raise Exception("Applying certificate timed out")
-            except requests.RequestException as e:
-                raise Exception(f"Failed to add certificate: {e}") from e
+                    if not wait(lambda: until_cert_installed(site_certificate["id"])):  # type: ignore
+                        raise Exception("Applying certificate timed out")
 
-            logger.info("Certificate added successfully")
+                    logger.info("Certificate added successfully")
+
+                if site_certificate["active"] == False:
+                    forge_api.activate_certificate(
+                        server_id, site_id, site_certificate["id"]
+                    )
+                    logger.info("Certificate activated successfully")
+        except requests.RequestException as e:
+            raise Exception(f"Failed to add certificate: {e}") from e
 
         # deploy site
         if site_conf["clone_repository"]:
