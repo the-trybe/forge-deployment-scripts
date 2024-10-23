@@ -1,6 +1,13 @@
 # Deploy to Laravel Forge GitHub Action
 
-This GitHub Action deploys your site using the Laravel Forge API. It reads the deployment configuration from a `forge-deploy.yml` file, installs necessary dependencies, and executes the deployment script.
+This GitHub Action simplifies site creation, configuration, and deployment using a YAML configuration file.
+
+## Key Features
+
+- **Version-Controlled Site Configurations:** Manage and track your site configurations in a YAML file within your repository. This ensures that your sites configuration is versioned along with your application code, providing consistency across environments.
+- **Automated Deployment:** Deploy multiple sites to Laravel Forge automatically using github actions.
+- **Customizable Configurations:** Configure all aspects of your Laravel Forge sites, such as environment variables, deployment script, Nginx configurations, PHP versions, daemons, and SSL certificates, directly from the YAML file.
+- **Secret Management:** Securely manage environment variables and secrets via GitHub Secrets or external secret management tools like 1Password. Secrets are easily replaced within the YAML configuration for safe deployment.
 
 ## Inputs
 
