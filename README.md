@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Laravel Forge
-        uses: the-trybe/forge-deployment-scripts@main
+        uses: the-trybe/forge-deployment-scripts@v1
         with:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
           deployment_file: forge-deploy.yml # [Optional] The deployment configuration file (default: forge-deploy.yml).
