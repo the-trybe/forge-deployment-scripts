@@ -37,7 +37,9 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    action_dir = cat_paths(os.path.dirname(__file__), "../")
+    action_dir = cat_paths(
+        os.path.dirname(__file__), "../"
+    )  # path of the action directory (parent directory of this file)
     forge_uri = "https://forge.laravel.com/api/v1"
     if FORGE_API_TOKEN is None:
         raise Exception("FORGE_API_TOKEN is not set")
@@ -101,12 +103,8 @@ def main():
         raise Exception(f"Server `{config["server_name"]}` not found")
 
     # sites
-    try:
-        response = session.get(f"{forge_uri}/servers/{server_id}/sites")
-        response.raise_for_status()
-    except requests.RequestException as e:
-        raise Exception("Failed to get sites from Laravel Forge API") from e
-    sites = response.json()["sites"]
+    sites = forge_api.get_all_sites(server_id)
+
     for site_conf in config["sites"]:
         print("\n")
         logger.info(f"\t---- Site: {site_conf['site_domain']} ----")
@@ -119,17 +117,8 @@ def main():
         # create site
         if not site:
             # nginx template
-            try:
-                response = session.get(
-                    f"{forge_uri}/servers/{server_id}/nginx/templates"
-                )
-                response.raise_for_status()
-            except requests.RequestException as e:
-                raise Exception(
-                    "Failed to get nginx templates from Laravel Forge API"
-                ) from e
 
-            nginx_templates = response.json()["templates"]
+            nginx_templates = forge_api.get_nginx_templates(server_id)
             nginx_template_id = next(
                 (
                     item["id"]
@@ -140,54 +129,31 @@ def main():
             )
 
             # if template isn't added in the server add it from nginx-templates folder
-            nginx_templates_dir = cat_paths(action_dir, "nginx_templates/")
+            nginx_template_path = cat_paths(
+                action_dir, "nginx_templates/", f"{site_conf['nginx_template']}.conf"
+            )
             if not nginx_template_id:
                 logger.info("Nginx template not created in the server")
                 logger.info("Creating nginx template...")
-                if os.path.exists(
-                    cat_paths(
-                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                    )
-                ):
+                if os.path.exists(nginx_template_path):
                     with open(
-                        cat_paths(
-                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                        ),
+                        nginx_template_path,
                         "r",
                     ) as file:
-                        try:
-                            response = session.post(
-                                f"{forge_uri}/servers/{server_id}/nginx/templates",
-                                json={
-                                    "content": file.read(),
-                                    "name": site_conf["nginx_template"],
-                                },
-                            )
-                            response.raise_for_status()
-                        except requests.RequestException as e:
-                            raise Exception(
-                                "Failed to create nginx template from Laravel Forge API"
-                            ) from e
-                        nginx_template_id = response.json()["template"]["id"]
+                        nginx_template_id = forge_api.create_nginx_template(
+                            server_id, site_conf["nginx_template"], file.read()
+                        )
                         logger.info("Nginx template created successfully")
                 else:
                     raise Exception("Invalid nginx template name")
             # else update the template if it changed
             else:
-                response = session.get(
-                    f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}"
+                server_template = forge_api.get_nginx_template_by_id(
+                    server_id, nginx_template_id
                 )
-                response.raise_for_status()
-                server_template = response.json()["template"]["content"]
-                if os.path.exists(
-                    cat_paths(
-                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                    )
-                ):
+                if os.path.exists(nginx_template_path):
                     with open(
-                        cat_paths(
-                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                        ),
+                        nginx_template_path,
                         "r",
                     ) as file:
                         local_template = file.read()
