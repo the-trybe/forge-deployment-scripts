@@ -37,7 +37,9 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    action_dir = cat_paths(os.path.dirname(__file__), "../")
+    action_dir = cat_paths(
+        os.path.dirname(__file__), "../"
+    )  # path of the action directory (parent directory of this file)
     forge_uri = "https://forge.laravel.com/api/v1"
     if FORGE_API_TOKEN is None:
         raise Exception("FORGE_API_TOKEN is not set")
@@ -101,12 +103,8 @@ def main():
         raise Exception(f"Server `{config["server_name"]}` not found")
 
     # sites
-    try:
-        response = session.get(f"{forge_uri}/servers/{server_id}/sites")
-        response.raise_for_status()
-    except requests.RequestException as e:
-        raise Exception("Failed to get sites from Laravel Forge API") from e
-    sites = response.json()["sites"]
+    sites = forge_api.get_all_sites(server_id)
+
     for site_conf in config["sites"]:
         print("\n")
         logger.info(f"\t---- Site: {site_conf['site_domain']} ----")
@@ -119,17 +117,8 @@ def main():
         # create site
         if not site:
             # nginx template
-            try:
-                response = session.get(
-                    f"{forge_uri}/servers/{server_id}/nginx/templates"
-                )
-                response.raise_for_status()
-            except requests.RequestException as e:
-                raise Exception(
-                    "Failed to get nginx templates from Laravel Forge API"
-                ) from e
 
-            nginx_templates = response.json()["templates"]
+            nginx_templates = forge_api.get_nginx_templates(server_id)
             nginx_template_id = next(
                 (
                     item["id"]
@@ -140,54 +129,31 @@ def main():
             )
 
             # if template isn't added in the server add it from nginx-templates folder
-            nginx_templates_dir = cat_paths(action_dir, "nginx_templates/")
+            nginx_template_path = cat_paths(
+                action_dir, "nginx_templates/", f"{site_conf['nginx_template']}.conf"
+            )
             if not nginx_template_id:
                 logger.info("Nginx template not created in the server")
                 logger.info("Creating nginx template...")
-                if os.path.exists(
-                    cat_paths(
-                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                    )
-                ):
+                if os.path.exists(nginx_template_path):
                     with open(
-                        cat_paths(
-                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                        ),
+                        nginx_template_path,
                         "r",
                     ) as file:
-                        try:
-                            response = session.post(
-                                f"{forge_uri}/servers/{server_id}/nginx/templates",
-                                json={
-                                    "content": file.read(),
-                                    "name": site_conf["nginx_template"],
-                                },
-                            )
-                            response.raise_for_status()
-                        except requests.RequestException as e:
-                            raise Exception(
-                                "Failed to create nginx template from Laravel Forge API"
-                            ) from e
-                        nginx_template_id = response.json()["template"]["id"]
+                        nginx_template_id = forge_api.create_nginx_template(
+                            server_id, site_conf["nginx_template"], file.read()
+                        )
                         logger.info("Nginx template created successfully")
                 else:
                     raise Exception("Invalid nginx template name")
             # else update the template if it changed
             else:
-                response = session.get(
-                    f"{forge_uri}/servers/{server_id}/nginx/templates/{nginx_template_id}"
+                server_template = forge_api.get_nginx_template_by_id(
+                    server_id, nginx_template_id
                 )
-                response.raise_for_status()
-                server_template = response.json()["template"]["content"]
-                if os.path.exists(
-                    cat_paths(
-                        nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                    )
-                ):
+                if os.path.exists(nginx_template_path):
                     with open(
-                        cat_paths(
-                            nginx_templates_dir, f"{site_conf["nginx_template"]}.conf"
-                        ),
+                        nginx_template_path,
                         "r",
                     ) as file:
                         local_template = file.read()
@@ -216,21 +182,10 @@ def main():
 
             # create site
             logger.info("Creating site...")
-            try:
-                response = session.post(
-                    f"{forge_uri}/servers/{server_id}/sites",
-                    json=create_site_payload,
-                )
-                response.raise_for_status()
-            except requests.RequestException as e:
-                raise Exception("Failed to create site from Laravel Forge API") from e
-
-            site = response.json()["site"]
+            site = forge_api.create_site(server_id, create_site_payload)
 
             def until_site_installed(site):
-                site = session.get(
-                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}"
-                ).json()["site"]
+                site = forge_api.get_site_by_id(server_id, site["id"])
                 return site["status"] == "installed"
 
             if not wait(lambda: until_site_installed(site)):
@@ -296,17 +251,18 @@ def main():
         # ---- php version ----
 
         try:
-            res = session.get(f"{forge_uri}/servers/{server_id}/sites/{site_id}")
-            res.raise_for_status()
-            site_php_version = res.json()["site"]["php_version"]
+            site_php_version = forge_api.get_site_by_id(server_id, site_id)[
+                "php_version"
+            ]
         except Exception as e:
             raise Exception("Failed to get site php version") from e
 
         if site_conf["php_version"] and site_conf["php_version"] != site_php_version:
             # check if version is installed, if not install it
-            res = session.get(f"{forge_uri}/servers/{server_id}/php")
-            res.raise_for_status()
-            if site_conf["php_version"] not in [php["version"] for php in res.json()]:
+            server_php_versions = forge_api.get_server_installed_php_versions(server_id)
+            if site_conf["php_version"] not in [
+                php["version"] for php in server_php_versions
+            ]:
                 logger.info("Installing php version...")
                 try:
                     response = session.post(
@@ -314,6 +270,7 @@ def main():
                         json={"version": site_conf["php_version"]},
                     )
                     response.raise_for_status()
+                    forge_api.install_php_version(server_id, site_conf["php_version"])
 
                     # wait for installation
                     def until_php_installed():
@@ -371,9 +328,7 @@ def main():
                 site = response.json()["site"]
 
                 def until_repo_installed():
-                    site = session.get(
-                        f"{forge_uri}/servers/{server_id}/sites/{site_id}",
-                    ).json()["site"]
+                    site = forge_api.get_site_by_id(server_id, site_id)
                     return site["repository_status"] == "installed"
 
                 if not wait(until_repo_installed):
