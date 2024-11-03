@@ -250,8 +250,8 @@ def test_deployment(server_id, fresh_deployment_config, second_deployment_config
         for site_config in second_deployment_config.get("sites", []):
             validate_site_configuration(server_id, site_config)
     finally:
-        pass
-        # cleanup_sites_and_daemons(server_id, second_deployment_config)
+        # pass
+        cleanup_sites_and_daemons(server_id, second_deployment_config)
 
 
 if __name__ == "__main__":
