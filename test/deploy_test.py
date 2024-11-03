@@ -14,6 +14,11 @@ from utils import cat_paths, get_domains_certificate, load_config, parse_env
 
 load_dotenv(".env.test")
 
+
+"""
+This test will run the deployment twice, a fresh deployment and then a second deployment with a different configuration.
+"""
+
 # Forge API constants
 FORGE_API_URL = "https://forge.laravel.com/api/v1"
 FORGE_API_TOKEN = os.getenv("FORGE_API_TOKEN")
@@ -245,8 +250,8 @@ def test_deployment(server_id, fresh_deployment_config, second_deployment_config
         for site_config in second_deployment_config.get("sites", []):
             validate_site_configuration(server_id, site_config)
     finally:
-        # pass
-        cleanup_sites_and_daemons(server_id, second_deployment_config)
+        pass
+        # cleanup_sites_and_daemons(server_id, second_deployment_config)
 
 
 if __name__ == "__main__":

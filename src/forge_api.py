@@ -7,6 +7,18 @@ class ForgeApi:
         self.forge_uri = "https://forge.laravel.com/api/v1"
 
     # --- Sites ---
+    def create_site(self, server_id, payload):
+        try:
+            response = self.session.post(
+                f"{self.forge_uri}/servers/{server_id}/sites",
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()["site"]
+
+        except requests.RequestException as e:
+            raise Exception("Failed to create site from Laravel Forge API") from e
+
     def get_all_sites(self, server_id):
         try:
             response = self.session.get(f"{self.forge_uri}/servers/{server_id}/sites")
@@ -15,6 +27,16 @@ class ForgeApi:
             return sites
         except requests.RequestException as e:
             raise Exception("Failed to get sites from Laravel Forge API") from e
+
+    def get_site_by_id(self, server_id, site_id):
+        try:
+            res = self.session.get(
+                f"{self.forge_uri}/servers/{server_id}/sites/{site_id}"
+            )
+            res.raise_for_status()
+            return res.json()["site"]
+        except requests.RequestException as e:
+            raise Exception("Failed to get site from Laravel Forge API") from e
 
     def update_site(self, server_id, site_id, **kwargs):
         try:
@@ -137,3 +159,23 @@ class ForgeApi:
             raise Exception(
                 "Failed to create certificate from Laravel Forge API"
             ) from e
+
+    # ------------ Php ------------
+
+    def get_server_installed_php_versions(self, server_id):
+        try:
+            res = self.session.get(f"{self.forge_uri}/servers/{server_id}/php")
+            res.raise_for_status()
+            return res.json()
+        except requests.RequestException as e:
+            raise Exception("Failed to get installed PHP versions") from e
+
+    def install_php_version(self, server_id, version):
+        try:
+            response = self.session.post(
+                f"{self.forge_uri}/servers/{server_id}/php",
+                json={"version": version},
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            raise Exception("Failed to install PHP version") from e

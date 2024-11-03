@@ -182,21 +182,10 @@ def main():
 
             # create site
             logger.info("Creating site...")
-            try:
-                response = session.post(
-                    f"{forge_uri}/servers/{server_id}/sites",
-                    json=create_site_payload,
-                )
-                response.raise_for_status()
-            except requests.RequestException as e:
-                raise Exception("Failed to create site from Laravel Forge API") from e
-
-            site = response.json()["site"]
+            site = forge_api.create_site(server_id, create_site_payload)
 
             def until_site_installed(site):
-                site = session.get(
-                    f"{forge_uri}/servers/{server_id}/sites/{site["id"]}"
-                ).json()["site"]
+                site = forge_api.get_site_by_id(server_id, site["id"])
                 return site["status"] == "installed"
 
             if not wait(lambda: until_site_installed(site)):
@@ -262,17 +251,18 @@ def main():
         # ---- php version ----
 
         try:
-            res = session.get(f"{forge_uri}/servers/{server_id}/sites/{site_id}")
-            res.raise_for_status()
-            site_php_version = res.json()["site"]["php_version"]
+            site_php_version = forge_api.get_site_by_id(server_id, site_id)[
+                "php_version"
+            ]
         except Exception as e:
             raise Exception("Failed to get site php version") from e
 
         if site_conf["php_version"] and site_conf["php_version"] != site_php_version:
             # check if version is installed, if not install it
-            res = session.get(f"{forge_uri}/servers/{server_id}/php")
-            res.raise_for_status()
-            if site_conf["php_version"] not in [php["version"] for php in res.json()]:
+            server_php_versions = forge_api.get_server_installed_php_versions(server_id)
+            if site_conf["php_version"] not in [
+                php["version"] for php in server_php_versions
+            ]:
                 logger.info("Installing php version...")
                 try:
                     response = session.post(
@@ -280,6 +270,7 @@ def main():
                         json={"version": site_conf["php_version"]},
                     )
                     response.raise_for_status()
+                    forge_api.install_php_version(server_id, site_conf["php_version"])
 
                     # wait for installation
                     def until_php_installed():
@@ -337,9 +328,7 @@ def main():
                 site = response.json()["site"]
 
                 def until_repo_installed():
-                    site = session.get(
-                        f"{forge_uri}/servers/{server_id}/sites/{site_id}",
-                    ).json()["site"]
+                    site = forge_api.get_site_by_id(server_id, site_id)
                     return site["repository_status"] == "installed"
 
                 if not wait(until_repo_installed):
