@@ -9,30 +9,35 @@ import yaml
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-from utils import cat_paths, load_config, parse_env
+from forge_api import ForgeApi
+from utils import cat_paths, get_domains_certificate, load_config, parse_env
 
 load_dotenv(".env.test")
-
 
 # Forge API constants
 FORGE_API_URL = "https://forge.laravel.com/api/v1"
 FORGE_API_TOKEN = os.getenv("FORGE_API_TOKEN")
 WORKFLOW_REPO_PATH = os.path.dirname(__file__)
-DEPLOYMENT_FILE = "forge-deploy.test.yml"
+FRESH_DEPLOYMENT_FILE = "forge-deploy.test.yml"
+SECOND_DEPLOYMENT_FILE = "forge-deploy2.test.yml"
 
 # Test server name
 test_server_name = "devops-tst"
 
-# HTTP headers for authentication
-headers = {
-    "Authorization": f"Bearer {FORGE_API_TOKEN}",
-    "Accept": "application/json",
-    "Content-Type": "application/json",
-}
+session = requests.sessions.Session()
+session.headers.update(
+    {
+        "Authorization": f"Bearer {FORGE_API_TOKEN}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+)
+
+forge_api = ForgeApi(session)
 
 
 def get_server_id():
-    response = requests.get(f"{FORGE_API_URL}/servers", headers=headers)
+    response = session.get(f"{FORGE_API_URL}/servers")
     response.raise_for_status()
     servers = response.json()["servers"]
     server = next(
@@ -42,17 +47,15 @@ def get_server_id():
     return server["id"]
 
 
-def load_deployment_config():
-    dep_file = cat_paths(WORKFLOW_REPO_PATH, DEPLOYMENT_FILE)
-    with open(dep_file, "r") as file:
+def load_deployment_config(dep_file):
+    dep_file_path = cat_paths(WORKFLOW_REPO_PATH, dep_file)
+    with open(dep_file_path, "r") as file:
         yaml_data = yaml.safe_load(file)
         return load_config(yaml_data)
 
 
 def get_site(server_id, domain):
-    response = requests.get(
-        f"{FORGE_API_URL}/servers/{server_id}/sites", headers=headers
-    )
+    response = session.get(f"{FORGE_API_URL}/servers/{server_id}/sites")
     response.raise_for_status()
     sites = response.json()["sites"]
     return next((site for site in sites if site["name"] == domain), None)
@@ -64,6 +67,26 @@ def validate_site_configuration(server_id, site_config):
         site is not None
     ), f"Site '{site_config['site_domain']}' not found on server '{test_server_name}'"
 
+    # Validate site web directory
+    site_dir = site["web_directory"]
+    expected_dir = cat_paths(
+        "/home/forge/",
+        site_config["site_domain"],
+        site_config["root_dir"],
+        site_config["web_dir"],
+    )
+    assert (
+        site_dir == expected_dir
+    ), f"Site web directory mismatch for site '{site_config['site_domain']}'"
+
+    # validate aliases
+    if site_config.get("aliases"):
+        aliases = site["aliases"]
+        expected_aliases = site_config.get("aliases")
+        assert set(aliases) == set(
+            expected_aliases
+        ), f"Aliases mismatch for site '{site_config['site_domain']}'"
+
     # Validate PHP version
     if site_config.get("php_version"):
         assert site["php_version"] == site_config["php_version"], (
@@ -72,8 +95,8 @@ def validate_site_configuration(server_id, site_config):
         )
 
     # Validate environment variables
-    response = requests.get(
-        f"{FORGE_API_URL}/servers/{server_id}/sites/{site['id']}/env", headers=headers
+    response = session.get(
+        f"{FORGE_API_URL}/servers/{server_id}/sites/{site['id']}/env"
     )
     response.raise_for_status()
     env_content = response.content.decode("utf-8")
@@ -93,9 +116,8 @@ def validate_site_configuration(server_id, site_config):
 
     # Validate deployment script
     if site_config.get("deployment_commands"):
-        response = requests.get(
+        response = session.get(
             f"{FORGE_API_URL}/servers/{server_id}/sites/{site['id']}/deployment/script",
-            headers=headers,
         )
         response.raise_for_status()
         deployment_script = response.content.decode("utf-8")
@@ -106,9 +128,8 @@ def validate_site_configuration(server_id, site_config):
 
     # Validate custom nginx config
     if site_config.get("nginx_custom_config"):
-        response = requests.get(
+        response = session.get(
             f"{FORGE_API_URL}/servers/{server_id}/sites/{site['id']}/nginx",
-            headers=headers,
         )
         response.raise_for_status()
         nginx_config = response.content.decode("utf-8")
@@ -122,9 +143,7 @@ def validate_site_configuration(server_id, site_config):
         ), f"Custom nginx config for site '{site_config['site_domain']}' does not match expected config."
 
     # Validate daemons
-    response = requests.get(
-        f"{FORGE_API_URL}/servers/{server_id}/daemons", headers=headers
-    )
+    response = session.get(f"{FORGE_API_URL}/servers/{server_id}/daemons")
     response.raise_for_status()
     daemons = response.json()["daemons"]
     site_dir = str(
@@ -141,7 +160,14 @@ def validate_site_configuration(server_id, site_config):
 
     # Validate SSL certificate
     if site_config.get("certificate"):
-        assert site["is_secured"]
+        site_certs = forge_api.list_certificates(server_id, site["id"])
+        site_certificate = get_domains_certificate(
+            site_certs, [site_config["site_domain"], *site_config["aliases"]]
+        )
+
+        assert (
+            site["is_secured"] and site_certificate and site_certificate["active"]
+        ), f"Site '{site['name']}' is not secured"
 
     # curl site to check if it is up
     response = requests.get(
@@ -150,14 +176,14 @@ def validate_site_configuration(server_id, site_config):
     assert response.status_code == 200, f"Site '{site_config['site_domain']}' is down"
 
 
-def run_deployment_script():
+def run_deployment_script(dep_file):
     subprocess.run(
         [sys.executable, "src/deploy.py"],
         check=True,
         env={  # type: ignore
             "DEBUG": "true",
-            "GITHUB_WORKSPACE": WORKFLOW_REPO_PATH,
-            "DEPLOYMENT_FILE": DEPLOYMENT_FILE,
+            "GITHUB_WORKSPACE": WORKFLOW_REPO_PATH,  # GITHUB WORKSPACE is root path where the code lives
+            "DEPLOYMENT_FILE": dep_file,
             "FORGE_API_TOKEN": FORGE_API_TOKEN,
         },
     )
@@ -170,9 +196,7 @@ def cleanup_sites_and_daemons(server_id, deployment_config):
             site_id = site["id"]
 
             # Delete daemons
-            response = requests.get(
-                f"{FORGE_API_URL}/servers/{server_id}/daemons", headers=headers
-            )
+            response = session.get(f"{FORGE_API_URL}/servers/{server_id}/daemons")
             response.raise_for_status()
             daemons = response.json()["daemons"]
             site_dir = cat_paths(
@@ -182,15 +206,14 @@ def cleanup_sites_and_daemons(server_id, deployment_config):
                 daemon for daemon in daemons if daemon["directory"] == site_dir
             ]
             for daemon in site_daemons:
-                response = requests.delete(
+                response = session.delete(
                     f"{FORGE_API_URL}/servers/{server_id}/daemons/{daemon['id']}",
-                    headers=headers,
                 )
                 response.raise_for_status()
 
             # Delete site
-            response = requests.delete(
-                f"{FORGE_API_URL}/servers/{server_id}/sites/{site_id}", headers=headers
+            response = session.delete(
+                f"{FORGE_API_URL}/servers/{server_id}/sites/{site_id}"
             )
             response.raise_for_status()
 
@@ -201,21 +224,29 @@ def server_id():
 
 
 @pytest.fixture(scope="module")
-def deployment_config():
-    return load_deployment_config()
+def fresh_deployment_config():
+    return load_deployment_config(FRESH_DEPLOYMENT_FILE)
 
 
-def test_deployment(server_id, deployment_config):
+@pytest.fixture(scope="module")
+def second_deployment_config():
+    return load_deployment_config(SECOND_DEPLOYMENT_FILE)
+
+
+def test_deployment(server_id, fresh_deployment_config, second_deployment_config):
     try:
-        # Run the deployment script
-        run_deployment_script()
+        # test fresh deployment
+        run_deployment_script(FRESH_DEPLOYMENT_FILE)
+        for site_config in fresh_deployment_config.get("sites", []):
+            validate_site_configuration(server_id, site_config)
 
-        # Validate the deployment
-        for site_config in deployment_config.get("sites", []):
+        # test second deployment
+        run_deployment_script(SECOND_DEPLOYMENT_FILE)
+        for site_config in second_deployment_config.get("sites", []):
             validate_site_configuration(server_id, site_config)
     finally:
         # pass
-        cleanup_sites_and_daemons(server_id, deployment_config)
+        cleanup_sites_and_daemons(server_id, second_deployment_config)
 
 
 if __name__ == "__main__":

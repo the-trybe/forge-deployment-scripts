@@ -5,8 +5,8 @@ github_branch: "main"
 sites:
   - site_domain: "api.devops.salah-oukil.me"
     aliases:
-      - "api1.devops.salah-oukil.me"
-      - "api2.devops.salah-oukil.me"
+      - "api3.devops.salah-oukil.me"
+      - "api4.devops.salah-oukil.me"
     root_dir: "test/sites/api"
     deployment_commands: |
       npm ci
@@ -25,4 +25,4 @@ sites:
     clone_repository: false
     nginx_custom_config: "/sites/api/nginx.conf"
     daemons:
-      - command: "watch -n 10 date"
+      - command: "watch -n 20 date"
