@@ -22,7 +22,9 @@ from utils import (
 
 load_dotenv()
 
-DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+DEBUG = (
+    os.getenv("DEBUG", "false").lower() == "true" or os.getenv("RUNNER_DEBUG") == "1"
+)
 WORKFLOW_REPO_PATH = os.getenv("GITHUB_WORKSPACE", "./")
 DEPLOYMENT_FILE_NAME = os.getenv("DEPLOYMENT_FILE", "forge-deploy.yml")
 FORGE_API_TOKEN = os.getenv("FORGE_API_TOKEN")
