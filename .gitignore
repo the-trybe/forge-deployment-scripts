@@ -1,5 +1,6 @@
 .env
 .env.test
+.secrets
 venv
 forge-deploy.yml
 __pycache__
