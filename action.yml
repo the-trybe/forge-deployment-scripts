@@ -23,10 +23,10 @@ runs:
   using: "composite"
   steps:
     - name: Install Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: "3.12"
-        cache: 'pip'
+        cache: "pip"
 
     - name: Install Dependencies
       run: pip install -r ${{ github.action_path }}/requirements.txt
