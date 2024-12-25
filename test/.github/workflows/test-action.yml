@@ -11,7 +11,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Laravel Forge
-        uses: the-trybe/forge-deployment-scripts@fix-req
+        uses: the-trybe/forge-deployment-scripts@main
         with:
           forge_api_token: ${{ secrets.FORGE_API_TOKEN }}
           deployment_file: forge-deploy.test.yml
