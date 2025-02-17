@@ -8,9 +8,11 @@ from schema import schema
 
 
 def validate_yaml_data(data):
-    v = Validator(schema)  # type: ignore
-    if not v.validate(data):  # type: ignore
+    v = Validator(schema, purge_unknown=False)  # type: ignore
+    v.allow_default_values = True  # type: ignore
+    if not v.validate(data, normalize=True):  # type: ignore
         raise Exception(f"YAML data validation failed: {v.errors}")  # type: ignore
+    return v.document  # type: ignore
 
 
 def replace_secrets_yaml(data, secrets):
@@ -92,6 +94,7 @@ def ensure_relative_path(path: str | None):
 
 
 def load_config(yaml_data):
+    # TODO: remove default values, as they are set by the validate_yaml_data function
     config = {
         "server_name": yaml_data["server_name"],
         "github_repository": yaml_data["github_repository"],
@@ -106,11 +109,12 @@ def load_config(yaml_data):
                 "root_dir": ensure_relative_path(site.get("root_dir", ".")),
                 "web_dir": ensure_relative_path(site.get("web_dir", "public")),
                 "project_type": site.get("project_type", "html"),
-                "php_version": site.get("php_version", None),
-                "deployment_commands": site.get("deployment_commands", None),
+                "php_version": site.get("php_version"),
+                "deployment_commands": site.get("deployment_commands"),
                 "daemons": site.get("daemons", []),
-                "environment": site.get("environment", None),
-                "env_file": ensure_relative_path(site.get("env_file", None)),
+                "laravel_scheduler": site.get("laravel_scheduler"),
+                "environment": site.get("environment"),
+                "env_file": ensure_relative_path(site.get("env_file")),
                 "aliases": site.get("aliases", []),
                 "nginx_template": site.get("nginx_template", "default"),
                 "nginx_template_variables": site.get("nginx_template_variables", {}),
