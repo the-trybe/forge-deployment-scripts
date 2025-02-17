@@ -25,6 +25,11 @@ schema = {
                     "required": False,
                 },
                 "daemons": {"type": "list", "required": False, "default": []},
+                "laravel_scheduler": {
+                    "type": "boolean",
+                    "required": False,
+                    "default": False,
+                },
                 "environment": {"type": "string", "required": False},
                 "env_file": {"type": "string", "required": False},
                 "aliases": {"type": "list", "required": False, "default": []},

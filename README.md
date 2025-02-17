@@ -87,6 +87,7 @@ sites:
     nginx_custom_config: "path/to/nginx.conf" # [Optional] Custom Nginx config file relative to the repository root.
     certificate: true # [Optional] Boolean to enable or disable SSL certificate for this domain (default: false).
     clone_repository: true # [Optional] Boolean to clone the repository (default: true).
+    laravel_scheduler: true # [Optional] Boolean to enable Laravel scheduler (default: false).
     daemons: # [Optional] List of daemons or processes to run in the background.
       - command: "php artisan queue:work"
       - command: "php artisan schedule:run"

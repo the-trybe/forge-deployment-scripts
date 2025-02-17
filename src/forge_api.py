@@ -179,3 +179,31 @@ class ForgeApi:
             response.raise_for_status()
         except requests.RequestException as e:
             raise Exception("Failed to install PHP version") from e
+
+    # --- Scheduler ---
+    def configure_laravel_scheduler(self, server_id, site_id, enabled):
+        try:
+            # check current status
+            response = self.session.get(
+                f"{self.forge_uri}/servers/{server_id}/sites/{site_id}/integrations/laravel-scheduler"
+            )
+            response.raise_for_status()
+            current_status = response.json()["enabled"]
+            if current_status == enabled:
+                return
+
+            # toggle status
+            if enabled:
+                response = self.session.post(
+                    f"{self.forge_uri}/servers/{server_id}/sites/{site_id}/integrations/laravel-scheduler"
+                )
+                response.raise_for_status()
+            else:
+                response = self.session.delete(
+                    f"{self.forge_uri}/servers/{server_id}/sites/{site_id}/integrations/laravel-scheduler"
+                )
+                response.raise_for_status()
+        except requests.RequestException as e:
+            raise Exception(
+                "Failed to configure scheduler from Laravel Forge API"
+            ) from e
