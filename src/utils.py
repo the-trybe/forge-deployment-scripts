@@ -135,3 +135,11 @@ def get_domains_certificate(certificates, domains) -> dict | None:
         if set(cert_domains) == set(domains):
             return cert
     return None
+
+
+def format_php_version(php_version: str) -> str:
+    """
+    Converts a PHP version string from the format 'php{major}{minor}' to 'php{major}.{minor}'.
+    """
+    match = re.match(r"php(\d)(\d+)", php_version)
+    return f"php{match.group(1)}.{match.group(2)}" if match else "php"
