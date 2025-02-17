@@ -8,6 +8,10 @@ schema = {
             "type": "dict",
             "schema": {
                 "site_domain": {"type": "string", "required": True},
+                "github_branch": {
+                    "type": "string",
+                    "required": False,
+                },
                 "root_dir": {"type": "string", "required": False, "default": "."},
                 "web_dir": {
                     "type": "string",
