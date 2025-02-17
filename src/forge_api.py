@@ -1,5 +1,7 @@
 import requests
 
+from utils import format_php_version
+
 
 class ForgeApi:
     def __init__(self, session):
@@ -181,28 +183,39 @@ class ForgeApi:
             raise Exception("Failed to install PHP version") from e
 
     # --- Scheduler ---
-    def configure_laravel_scheduler(self, server_id, site_id, enabled):
+    def configure_laravel_scheduler(
+        self, server_id, php_version: str, work_dir, enabled: bool
+    ):
         try:
-            # check current status
-            response = self.session.get(
-                f"{self.forge_uri}/servers/{server_id}/sites/{site_id}/integrations/laravel-scheduler"
-            )
+            # php version example: php84 convert it to php8.4
+            php_version = format_php_version(php_version)
+            scheduler_cmd = f"{php_version} {work_dir}/artisan schedule:run"
+            # get current schedule job
+            response = self.session.get(f"{self.forge_uri}/servers/{server_id}/jobs")
             response.raise_for_status()
-            current_status = response.json()["enabled"]
-            if current_status == enabled:
-                return
+            server_jobs = response.json()["jobs"]
+            current_scheduler_job = next(
+                (job for job in server_jobs if job["command"] == scheduler_cmd), None
+            )
 
-            # toggle status
-            if enabled:
+            if enabled and not current_scheduler_job:
+                # create new scheduler job
                 response = self.session.post(
-                    f"{self.forge_uri}/servers/{server_id}/sites/{site_id}/integrations/laravel-scheduler"
+                    f"{self.forge_uri}/servers/{server_id}/jobs",
+                    json={
+                        "user": "forge",
+                        "command": scheduler_cmd,
+                        "frequency": "minutely",
+                    },
                 )
                 response.raise_for_status()
-            else:
+            elif not enabled and current_scheduler_job:
+                # delete current scheduler job
                 response = self.session.delete(
-                    f"{self.forge_uri}/servers/{server_id}/sites/{site_id}/integrations/laravel-scheduler"
+                    f"{self.forge_uri}/servers/{server_id}/jobs/{current_scheduler_job['id']}"
                 )
                 response.raise_for_status()
+
         except requests.RequestException as e:
             raise Exception(
                 "Failed to configure scheduler from Laravel Forge API"

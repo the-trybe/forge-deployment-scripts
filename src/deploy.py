@@ -388,10 +388,12 @@ def main():
             raise Exception(f"Failed to add daemons: {e}") from e
 
         # Scheduler
-        # NOTE: forge's current behavior is that it uses the public dir's parent directory as the working directory
         if site_conf["project_type"] == "php":
             forge_api.configure_laravel_scheduler(
-                server_id, site_id, site_conf["laravel_scheduler"]
+                server_id,
+                site_conf["php_version"],
+                site_dir,
+                site_conf["laravel_scheduler"],
             )
 
         # deployment script
