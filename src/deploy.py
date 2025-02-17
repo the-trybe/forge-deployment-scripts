@@ -322,7 +322,7 @@ def main():
                     json={
                         "provider": "github",
                         "repository": config["github_repository"],
-                        "branch": config["github_branch"],
+                        "branch": site_conf["github_branch"],
                         "composer": False,
                     },
                 )

@@ -106,6 +106,7 @@ def load_config(yaml_data):
         config["sites"].append(
             {
                 "site_domain": site["site_domain"],
+                "github_branch": site.get("github_branch") or config["github_branch"],
                 "root_dir": ensure_relative_path(site.get("root_dir", ".")),
                 "web_dir": ensure_relative_path(site.get("web_dir", "public")),
                 "project_type": site.get("project_type", "html"),
