@@ -8,6 +8,10 @@ schema = {
             "type": "dict",
             "schema": {
                 "site_domain": {"type": "string", "required": True},
+                "github_branch": {
+                    "type": "string",
+                    "required": False,
+                },
                 "root_dir": {"type": "string", "required": False, "default": "."},
                 "web_dir": {
                     "type": "string",
@@ -25,6 +29,11 @@ schema = {
                     "required": False,
                 },
                 "daemons": {"type": "list", "required": False, "default": []},
+                "laravel_scheduler": {
+                    "type": "boolean",
+                    "required": False,
+                    "default": False,
+                },
                 "environment": {"type": "string", "required": False},
                 "env_file": {"type": "string", "required": False},
                 "aliases": {"type": "list", "required": False, "default": []},

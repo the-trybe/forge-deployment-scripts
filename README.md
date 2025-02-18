@@ -61,6 +61,7 @@ github_branch: "main" # [Optional] The branch to deploy (default: "main").
 # Sites Configuration - list of sites to configure and deploy
 sites:
   - site_domain: "mywebsite.com" # [Required] The primary domain for the site.
+    github_branch: "another-branch" #[Optional] site level branch config, if not set global branch is used.
     root_dir: "/client" # [Optional] The root directory relative to the repo root (default: "/").
     web_dir: "/public" # [Optional] The web directory (default: "/public").
     project_type: "php" # [Optional] The type of the project ("php" for Laravel projects, for other types don't include).
@@ -87,6 +88,7 @@ sites:
     nginx_custom_config: "path/to/nginx.conf" # [Optional] Custom Nginx config file relative to the repository root.
     certificate: true # [Optional] Boolean to enable or disable SSL certificate for this domain (default: false).
     clone_repository: true # [Optional] Boolean to clone the repository (default: true).
+    laravel_scheduler: true # [Optional] Boolean to enable Laravel scheduler (default: false).
     daemons: # [Optional] List of daemons or processes to run in the background.
       - command: "php artisan queue:work"
       - command: "php artisan schedule:run"

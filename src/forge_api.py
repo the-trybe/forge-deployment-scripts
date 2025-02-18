@@ -1,4 +1,8 @@
+from typing import Literal
+
 import requests
+
+from utils import format_php_version
 
 
 class ForgeApi:
@@ -179,3 +183,41 @@ class ForgeApi:
             response.raise_for_status()
         except requests.RequestException as e:
             raise Exception("Failed to install PHP version") from e
+
+    # --- Cron Jobs ---
+    def get_server_jobs(self, server_id):
+        try:
+            # get current schedule job
+            response = self.session.get(f"{self.forge_uri}/servers/{server_id}/jobs")
+            response.raise_for_status()
+            return response.json()["jobs"]
+        except requests.RequestException as e:
+            raise Exception("Failed to get server jobs from Laravel Forge API") from e
+
+    def create_job(
+        self,
+        server_id,
+        cmd: str,
+        frequency: Literal["minutely", "hourly", "nightly", "weekly", "monthly"],
+    ):
+        try:
+            response = self.session.post(
+                f"{self.forge_uri}/servers/{server_id}/jobs",
+                json={
+                    "user": "forge",
+                    "command": cmd,
+                    "frequency": frequency,
+                },
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            raise Exception("Failed to create job from Laravel Forge API") from e
+
+    def delete_job(self, server_id, job_id):
+        try:
+            response = self.session.delete(
+                f"{self.forge_uri}/servers/{server_id}/jobs/{job_id}"
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            raise Exception("Failed to delete job from Laravel Forge API") from e
