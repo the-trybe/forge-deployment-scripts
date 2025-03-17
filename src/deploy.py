@@ -59,6 +59,7 @@ def main():
         raise Exception(f"Error parsing YAML file: {e}") from e
 
     # replace secrets
+    secrets = None
     if SECRETS_ENV:
         secrets = parse_env(SECRETS_ENV)
 
@@ -457,7 +458,14 @@ def main():
                             "Loading environment variables from file `%s`",
                             site_conf["env_file"],
                         )
-                        file_env = parse_env(file.read())
+                        # replace screts
+                        if secrets:
+                            env_file_content = str(
+                                replace_secrets_yaml(file.read(), secrets)
+                            )
+                            file_env = parse_env(env_file_content)
+                        else:
+                            file_env = parse_env(file.read())
                         logger.debug("Env variables loaded from file:\n%s", file_env)
                         site_env.update(file_env)
                 except FileNotFoundError as e:
