@@ -44,7 +44,7 @@ def main():
         os.path.dirname(__file__), "../"
     )  # path of the action directory (parent directory of this file)
     forge_uri = "https://forge.laravel.com/api/v1"
-    if FORGE_API_TOKEN is None:
+    if FORGE_API_TOKEN is None or FORGE_API_TOKEN == "":
         raise Exception("FORGE_API_TOKEN is not set")
 
     dep_file = cat_paths(WORKFLOW_REPO_PATH, DEPLOYMENT_FILE_NAME)
