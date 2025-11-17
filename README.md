@@ -1,3 +1,9 @@
+This repository is archived and no longer maintained.
+
+Active development has moved to: [the-trybe/deploy-to-laravel-forge](https://github.com/the-trybe/deploy-to-laravel-forge)
+
+---
+
 # Deploy to Laravel Forge GitHub Action
 
 This GitHub Action simplifies site creation, configuration, and deployment using a YAML configuration file.
